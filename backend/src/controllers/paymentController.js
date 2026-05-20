@@ -12,23 +12,18 @@ const formatCurrency = (value) => {
 
 const createPayment = async (req, res) => {
   try {
-    const { monto, descripcion, referencia, factura_numero, boleta_numero, estado = 'pagado', metodo = 'Yape', fecha_pago } = req.body;
+    const { monto, metodo_pago, metodo, estado = 'pagado', fecha, fecha_pago } = req.body;
 
     if (!monto) {
       return res.status(400).json({ message: 'El monto es requerido', code: 'MISSING_FIELDS' });
     }
 
     const payload = {
-      paciente_id: req.user.id,
+      id_paciente: req.user.id,
       monto: normalizeAmount(monto),
-      descripcion: descripcion || null,
-      referencia: referencia || null,
-      factura_numero: factura_numero || null,
-      boleta_numero: boleta_numero || null,
+      metodo_pago: metodo_pago || metodo || 'Yape',
       estado,
-      metodo,
-      fecha_pago: fecha_pago || new Date().toISOString().split('T')[0],
-      creado_en: new Date().toISOString(),
+      fecha: fecha || fecha_pago || new Date().toISOString().split('T')[0],
     };
 
     const { data, error } = await supabase.from('pagos').insert([payload]).select('*').single();
@@ -46,10 +41,10 @@ const createPayment = async (req, res) => {
 const listPayments = async (req, res) => {
   try {
     const { patientId, status, startDate, endDate } = req.query;
-    let query = supabase.from('pagos').select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre)');
+    let query = supabase.from('pagos').select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)');
 
     if (patientId) {
-      query = query.eq('paciente_id', patientId);
+      query = query.eq('id_paciente', patientId);
     }
 
     if (status) {
@@ -57,14 +52,14 @@ const listPayments = async (req, res) => {
     }
 
     if (startDate) {
-      query = query.gte('fecha_pago', startDate);
+      query = query.gte('fecha', startDate);
     }
 
     if (endDate) {
-      query = query.lte('fecha_pago', endDate);
+      query = query.lte('fecha', endDate);
     }
 
-    const { data, error } = await query.order('fecha_pago', { ascending: false });
+    const { data, error } = await query.order('fecha', { ascending: false });
 
     if (error) {
       return res.status(500).json({ message: 'Error al obtener pagos', error: error.message, code: 'PAYMENT_LIST_ERROR' });
@@ -81,9 +76,9 @@ const getPaymentsByPatient = async (req, res) => {
     const { patientId } = req.params;
     const { data, error } = await supabase
       .from('pagos')
-      .select('id, fecha_pago, monto, estado, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre)')
-      .eq('paciente_id', patientId)
-      .order('fecha_pago', { ascending: false });
+      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)')
+      .eq('id_paciente', patientId)
+      .order('fecha', { ascending: false });
 
     if (error) {
       return res.status(500).json({ message: 'Error al obtener pagos del paciente', error: error.message, code: 'PAYMENT_BY_PATIENT_ERROR' });
@@ -100,7 +95,7 @@ const getPaymentDetails = async (req, res) => {
     const { paymentId } = req.params;
     const { data, error } = await supabase
       .from('pagos')
-      .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre, correo)')
+      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)')
       .eq('id', paymentId)
       .single();
 
@@ -126,10 +121,10 @@ const generateCashBoxReport = async (req, res) => {
 
     const { data: pagos, error } = await supabase
       .from('pagos')
-      .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre)')
-      .gte('fecha_pago', start)
-      .lte('fecha_pago', end)
-      .order('fecha_pago', { ascending: true });
+      .select('id, fecha, monto, metodo_pago, estado, id_paciente, pacientes:id_paciente(nombre)')
+      .gte('fecha', start)
+      .lte('fecha', end)
+      .order('fecha', { ascending: true });
 
     if (error) {
       return res.status(500).json({ message: 'Error al obtener datos', error: error.message, code: 'CASHBOX_REPORT_ERROR' });
@@ -158,11 +153,9 @@ const generateCashBoxReport = async (req, res) => {
     doc.moveDown();
 
     (pagos || []).forEach((pago, index) => {
-      doc.fontSize(10).text(`${index + 1}. Fecha: ${pago.fecha_pago || 'N/A'}`);
-      doc.text(`   Paciente: ${pago.usuarios?.nombre || pago.paciente_id}`);
-      doc.text(`   Monto: ${formatCurrency(pago.monto)} | Estado: ${pago.estado || 'N/A'} | Método: ${pago.metodo || 'N/A'}`);
-      doc.text(`   Referencia: ${pago.referencia || 'N/A'} | Factura: ${pago.factura_numero || 'N/A'} | Boleta: ${pago.boleta_numero || 'N/A'}`);
-      doc.text(`   Descripción: ${pago.descripcion || 'N/A'}`);
+      doc.fontSize(10).text(`${index + 1}. Fecha: ${pago.fecha || 'N/A'}`);
+      doc.text(`   Paciente: ${pago.pacientes?.nombre || pago.id_paciente || 'N/A'}`);
+      doc.text(`   Monto: ${formatCurrency(pago.monto)} | Estado: ${pago.estado || 'N/A'} | Método: ${pago.metodo_pago || 'N/A'}`);
       doc.moveDown();
     });
 
@@ -177,7 +170,7 @@ const generatePaymentReceipt = async (req, res) => {
     const { paymentId } = req.params;
     const { data: pago, error } = await supabase
       .from('pagos')
-      .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre, correo)')
+      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, pacientes:id_paciente(nombre)')
       .eq('id', paymentId)
       .single();
 
@@ -198,18 +191,12 @@ const generatePaymentReceipt = async (req, res) => {
     doc.pipe(res);
     doc.fontSize(20).text('BOLETA DE PAGO', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`Número de boleta: ${pago.boleta_numero || 'N/A'}`);
-    doc.text(`Fecha de pago: ${pago.fecha_pago || 'N/A'}`);
-    doc.text(`Paciente: ${pago.usuarios?.nombre || pago.paciente_id}`);
-    doc.text(`Email: ${pago.usuarios?.correo || 'N/A'}`);
+    doc.fontSize(12).text(`Fecha de pago: ${pago.fecha || 'N/A'}`);
+    doc.text(`Paciente: ${pago.pacientes?.nombre || pago.id_paciente || 'N/A'}`);
     doc.text(`Monto: ${formatCurrency(pago.monto)}`);
     doc.text(`Estado: ${pago.estado || 'N/A'}`);
-    doc.text(`Método: ${pago.metodo || 'N/A'}`);
-    doc.text(`Referencia: ${pago.referencia || 'N/A'}`);
-    doc.text(`Factura: ${pago.factura_numero || 'N/A'}`);
-    doc.moveDown();
-    doc.fontSize(12).text('Descripción:');
-    doc.fontSize(10).text(pago.descripcion || 'No hay descripción adicional.');
+    doc.text(`Método: ${pago.metodo_pago || 'N/A'}`);
+    doc.text(`Comprobante: ${pago.comprobante || 'N/A'}`);
     doc.end();
   } catch (err) {
     res.status(500).json({ message: 'Error al generar boleta', error: err.message, code: 'SERVER_ERROR' });
@@ -221,7 +208,7 @@ const generateInvoiceReport = async (req, res) => {
     const { paymentId } = req.params;
     const { data: pago, error } = await supabase
       .from('pagos')
-      .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre, correo)')
+      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, pacientes:id_paciente(nombre)')
       .eq('id', paymentId)
       .single();
 
@@ -242,18 +229,13 @@ const generateInvoiceReport = async (req, res) => {
     doc.pipe(res);
     doc.fontSize(20).text('FACTURA', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`Número de factura: ${pago.factura_numero || 'N/A'}`);
-    doc.text(`Fecha de emisión: ${new Date().toISOString().split('T')[0]}`);
-    doc.text(`Fecha de pago: ${pago.fecha_pago || 'N/A'}`);
-    doc.text(`Paciente: ${pago.usuarios?.nombre || pago.paciente_id}`);
-    doc.text(`Email: ${pago.usuarios?.correo || 'N/A'}`);
+    doc.fontSize(12).text(`Fecha de emisión: ${new Date().toISOString().split('T')[0]}`);
+    doc.text(`Fecha de pago: ${pago.fecha || 'N/A'}`);
+    doc.text(`Paciente: ${pago.pacientes?.nombre || pago.id_paciente || 'N/A'}`);
     doc.text(`Monto total: ${formatCurrency(pago.monto)}`);
     doc.text(`Estado: ${pago.estado || 'N/A'}`);
-    doc.text(`Método: ${pago.metodo || 'N/A'}`);
-    doc.text(`Referencia: ${pago.referencia || 'N/A'}`);
-    doc.moveDown();
-    doc.fontSize(12).text('Detalle del servicio:');
-    doc.fontSize(10).text(pago.descripcion || 'No se proporcionó descripción.');
+    doc.text(`Método: ${pago.metodo_pago || 'N/A'}`);
+    doc.text(`Comprobante: ${pago.comprobante || 'N/A'}`);
     doc.end();
   } catch (err) {
     res.status(500).json({ message: 'Error al generar factura', error: err.message, code: 'SERVER_ERROR' });

@@ -9,7 +9,7 @@ const getPatients = async (req, res) => {
 
     let query = supabase
       .from('pacientes')
-      .select('id, nombre, correo, telefono, estado, created_at', { count: 'exact' })
+      .select('id, nombre, dni, telefono, estado, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -41,6 +41,35 @@ const getPatients = async (req, res) => {
   }
 };
 
+const createPatient = async (req, res) => {
+  try {
+    const { nombre, dni, telefono, fecha_nacimiento, direccion } = req.body;
+
+    if (!nombre) {
+      return res.status(400).json({ message: 'El nombre es requerido', code: 'REQUIRED_FIELD' });
+    }
+
+    const payload = {
+      nombre,
+      dni: dni || null,
+      telefono: telefono || null,
+      fecha_nacimiento: fecha_nacimiento || null,
+      direccion: direccion || null,
+      estado: 'activo',
+    };
+
+    const { data, error } = await supabase.from('pacientes').insert([payload]).select('*').single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al crear paciente', error: error.message, code: 'PATIENT_CREATE_ERROR' });
+    }
+
+    res.status(201).json({ code: 'PATIENT_CREATED', patient: data });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 const updatePatientState = async (req, res) => {
   try {
     const { id } = req.params;
@@ -54,7 +83,7 @@ const updatePatientState = async (req, res) => {
       .from('pacientes')
       .update({ estado })
       .eq('id', id)
-      .select('id, nombre, correo, telefono, estado')
+      .select('id, nombre, dni, telefono, estado')
       .single();
 
     if (error) {
@@ -342,6 +371,7 @@ const generateTreatmentSummaryPDF = async (req, res) => {
 
 module.exports = {
   getPatients,
+  createPatient,
   updatePatientState,
   getTreatments,
   createTreatment,

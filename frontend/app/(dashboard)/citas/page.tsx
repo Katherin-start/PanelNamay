@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 import AppointmentsPage from '@/components/appointments/AppointmentsPage';
 
 export const metadata: Metadata = {
@@ -8,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function CitasPage() {
-  return (
-    <DashboardLayout>
-      <AppointmentsPage />
-    </DashboardLayout>
-  );
+  return <AppointmentsPage />;
 }

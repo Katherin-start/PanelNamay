@@ -65,27 +65,22 @@ const login = async (req, res) => {
 // Función para registrar usuario (solo administradores pueden crear usuarios)
 const register = async (req, res) => {
   const { email, password, nombre, rol_id } = req.body;
-  const adminId = req.user?.id; // Obtenido del middleware de autenticación
+
+  if (!email || !password || !nombre) {
+    return res.status(400).json({ message: 'Email, contraseña y nombre son requeridos', code: 'MISSING_FIELDS' });
+  }
 
   try {
-    // Validar que quien registra sea administrador
-    if (req.user?.rol !== 'ADMINISTRADOR') {
-      return res.status(403).json({ message: 'Solo administradores pueden registrar usuarios' });
-    }
-
-    // Registrar en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Registrar en Supabase Auth usando admin API (service role bypasses email confirmation)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          nombre,
-        },
-      },
+      email_confirm: true,
+      user_metadata: { nombre },
     });
 
     if (authError) {
-      return res.status(400).json({ message: 'Error al registrar en Auth', error: authError.message });
+      return res.status(400).json({ message: authError.message, code: 'AUTH_REGISTER_ERROR' });
     }
 
     // Crear registro en tabla usuarios
@@ -96,7 +91,7 @@ const register = async (req, res) => {
           id: authData.user.id,
           correo: email,
           nombre,
-          rol_id: rol_id || 5, // Por defecto PRACTICANTE (id 5)
+          rol_id: rol_id || 5,
           activo: true,
           creado_en: new Date(),
         },
@@ -104,7 +99,7 @@ const register = async (req, res) => {
       .select();
 
     if (usuarioError) {
-      return res.status(400).json({ message: 'Error al crear usuario', error: usuarioError.message });
+      return res.status(400).json({ message: usuarioError.message, code: 'DB_INSERT_ERROR' });
     }
 
     res.status(201).json({
@@ -124,6 +119,34 @@ const logout = async (req, res) => {
       return res.status(500).json({ message: 'Error al cerrar sesión', error: error.message });
     }
     res.json({ message: 'Sesión cerrada exitosamente' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message });
+  }
+};
+
+// Función para listar todos los usuarios (solo administradores)
+const getUsers = async (req, res) => {
+  try {
+    const { data: usuarios, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, correo, rol_id, activo, creado_en, roles:rol_id(id, nombre)')
+      .order('creado_en', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al obtener usuarios', error: error.message });
+    }
+
+    const users = (usuarios || []).map((u) => ({
+      id: u.id,
+      nombre: u.nombre,
+      email: u.correo,
+      rol: u.roles?.nombre || 'PRACTICANTE',
+      rol_id: u.rol_id,
+      activo: u.activo,
+      creado_en: u.creado_en,
+    }));
+
+    res.json({ users });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message });
   }
@@ -161,4 +184,5 @@ module.exports = {
   register,
   logout,
   getProfile,
+  getUsers,
 };

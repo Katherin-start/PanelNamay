@@ -4,9 +4,10 @@ export interface User {
   id: string;
   nombre: string;
   email: string;
-  rol: 'admin' | 'doctor' | 'recepcionista' | 'odontologo' | 'cajero' | 'practicante';
-  estado: 'activo' | 'inactivo';
-  creado_en: string;
+  rol: string;
+  estado?: 'activo' | 'inactivo';
+  activo?: boolean;
+  creado_en?: string;
   ultimo_acceso?: string;
 }
 

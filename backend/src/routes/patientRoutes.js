@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getPatients,
+  createPatient,
   updatePatientState,
   getTreatments,
   createTreatment,
@@ -18,6 +19,7 @@ router.use(authMiddleware);
 
 // 👥 RUTAS DE PACIENTES
 router.get('/', roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA']), getPatients);
+router.post('/', roleMiddleware(['ADMINISTRADOR', 'RECEPCIONISTA']), createPatient);
 router.put('/:id/state', roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO']), updatePatientState);
 
 // 🩺 RUTAS DE TRATAMIENTOS

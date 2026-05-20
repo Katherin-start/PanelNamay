@@ -9,18 +9,18 @@ const listAppointments = async (req, res) => {
     let query = supabase
       .from('citas')
       .select(
-        'id, fecha, hora, estado, paciente_id, odontologo_id, notas, descripcion, creado_en, actualizado_en, usuarios:paciente_id(nombre), odontologo:odontologo_id(nombre)'
+        'id, fecha, hora, estado, id_paciente, id_odontologo, pacientes:id_paciente(nombre), usuarios:id_odontologo(nombre)'
       );
 
     if (estado) query = query.eq('estado', estado);
-    if (paciente_id) query = query.eq('paciente_id', paciente_id);
-    if (odontologo_id) query = query.eq('odontologo_id', odontologo_id);
+    if (paciente_id) query = query.eq('id_paciente', paciente_id);
+    if (odontologo_id) query = query.eq('id_odontologo', odontologo_id);
     if (fecha) query = query.eq('fecha', fecha);
     if (fecha_inicio) query = query.gte('fecha', fecha_inicio);
     if (fecha_fin) query = query.lte('fecha', fecha_fin);
 
     if (currentUserRole === 'ODONTOLOGO') {
-      query = query.eq('odontologo_id', currentUserId);
+      query = query.eq('id_odontologo', currentUserId);
     }
 
     const { data, error } = await query.order('fecha', { ascending: true }).order('hora', { ascending: true });
@@ -40,7 +40,7 @@ const getAppointmentById = async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('citas')
-      .select('id, fecha, hora, estado, paciente_id, odontologo_id, notas, descripcion, creado_en, actualizado_en, usuarios:paciente_id(nombre), odontologo:odontologo_id(nombre)')
+      .select('id, fecha, hora, estado, id_paciente, id_odontologo, pacientes:id_paciente(nombre), usuarios:id_odontologo(nombre)')
       .eq('id', id)
       .single();
 
@@ -60,22 +60,29 @@ const getAppointmentById = async (req, res) => {
 
 const createAppointment = async (req, res) => {
   try {
-    const { fecha, hora, paciente_id, odontologo_id, estado = 'programada', notas, descripcion } = req.body;
+    const { fecha, hora, id_paciente, id_odontologo, paciente_id, odontologo_id, estado = 'programada', fecha_hora } = req.body;
 
-    if (!fecha || !hora || !paciente_id || !odontologo_id) {
-      return res.status(400).json({ message: 'Fecha, hora, paciente y odontólogo son requeridos', code: 'MISSING_FIELDS' });
+    const finalPacienteId = id_paciente ?? paciente_id ?? null;
+    const finalOdontologoId = id_odontologo ?? odontologo_id ?? null;
+
+    let finalFecha = fecha;
+    let finalHora = hora;
+    if (fecha_hora && (!fecha || !hora)) {
+      const dt = new Date(fecha_hora);
+      finalFecha = dt.toISOString().split('T')[0];
+      finalHora = dt.toTimeString().substring(0, 5);
+    }
+
+    if (!finalFecha || !finalHora) {
+      return res.status(400).json({ message: 'Fecha y hora son requeridos', code: 'MISSING_FIELDS' });
     }
 
     const payload = {
-      fecha,
-      hora,
-      paciente_id,
-      odontologo_id,
+      fecha: finalFecha,
+      hora: finalHora,
+      id_paciente: finalPacienteId,
+      id_odontologo: finalOdontologoId,
       estado,
-      notas: notas || null,
-      descripcion: descripcion || null,
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
     };
 
     const { data, error } = await supabase.from('citas').insert([payload]).select('*').single();
@@ -93,17 +100,14 @@ const createAppointment = async (req, res) => {
 const updateAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fecha, hora, paciente_id, odontologo_id, estado, notas, descripcion } = req.body;
+    const { fecha, hora, id_paciente, id_odontologo, paciente_id, odontologo_id, estado } = req.body;
 
     const updates = {
       fecha,
       hora,
-      paciente_id,
-      odontologo_id,
+      id_paciente: id_paciente ?? paciente_id,
+      id_odontologo: id_odontologo ?? odontologo_id,
       estado,
-      notas,
-      descripcion,
-      actualizado_en: new Date().toISOString(),
     };
 
     const filteredUpdates = Object.entries(updates).reduce((acc, [key, value]) => {

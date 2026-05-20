@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96" fill="none">
+  <!-- Tooth silhouette with crown + two roots -->
+  <path d="
+    M38 10
+    C30 10 22 15 18 22
+    C14 29 13 37 14 45
+    C15 53 17 59 19 65
+    C21 71 22 77 23 82
+    C24 87 25 92 28 92
+    C31 92 32 87 33 82
+    C34 77 35 72 38 72
+    C41 72 42 77 43 82
+    C44 87 45 92 48 92
+    C51 92 52 87 53 82
+    C54 77 55 71 57 65
+    C59 59 61 53 62 45
+    C63 37 62 29 58 22
+    C54 15 46 10 38 10
+    Z
+  " fill="white" stroke="#2346A0" stroke-width="2.2"/>
+
+  <!-- Blue left curve (part of N) -->
+  <path d="M22 66 C23 53 25 40 30 28" stroke="#2346A0" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+  <!-- Blue right curve (part of N) -->
+  <path d="M46 28 C51 40 53 53 54 66" stroke="#2346A0" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+  <!-- Red diagonal N stroke -->
+  <path d="M22 66 C27 55 32 44 38 36 C44 44 49 55 54 66" stroke="#E63946" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- "Dental" in dark navy -->
+  <text x="80" y="48" font-family="'Arial Black', 'Arial', sans-serif" font-weight="900" font-size="28" fill="#1D3557">Dental</text>
+  <!-- "Namay" in red -->
+  <text x="200" y="48" font-family="'Arial Black', 'Arial', sans-serif" font-weight="900" font-size="28" fill="#E63946">Namay</text>
+
+  <!-- "ODONTOLOGÍA" pill -->
+  <rect x="80" y="58" width="113" height="19" rx="9.5" fill="none" stroke="#1D3557" stroke-width="1.4"/>
+  <text x="136.5" y="71.5" font-family="Arial, sans-serif" font-weight="700" font-size="9" fill="#1D3557" text-anchor="middle" letter-spacing="0.8">ODONTOLOGÍA</text>
+
+  <!-- "INTEGRAL" pill -->
+  <rect x="200" y="58" width="78" height="19" rx="9.5" fill="none" stroke="#1D3557" stroke-width="1.4"/>
+  <text x="239" y="71.5" font-family="Arial, sans-serif" font-weight="700" font-size="9" fill="#1D3557" text-anchor="middle" letter-spacing="0.8">INTEGRAL</text>
+</svg>
