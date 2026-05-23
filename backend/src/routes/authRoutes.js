@@ -9,9 +9,11 @@ const router = express.Router();
 router.post('/login', login);
 
 // Rutas protegidas
-router.post('/register', authMiddleware, roleMiddleware(['ADMINISTRADOR']), register); // Solo admin
+// Cualquier usuario autenticado puede crear otros usuarios
+router.post('/register', authMiddleware, register);
 router.post('/logout', authMiddleware, logout);
 router.get('/profile', authMiddleware, getProfile);
-router.get('/users', authMiddleware, roleMiddleware(['ADMINISTRADOR']), getUsers); // Solo admin
+// Cualquier usuario autenticado puede ver la lista de usuarios
+router.get('/users', authMiddleware, getUsers);
 
 module.exports = router;

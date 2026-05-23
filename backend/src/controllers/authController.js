@@ -83,8 +83,8 @@ const register = async (req, res) => {
       return res.status(400).json({ message: authError.message, code: 'AUTH_REGISTER_ERROR' });
     }
 
-    // Crear registro en tabla usuarios
-    const { data: usuarioData, error: usuarioError } = await supabase
+    // Crear registro en tabla usuarios (sin .select() para evitar problemas RLS)
+    const { error: usuarioError } = await supabase
       .from('usuarios')
       .insert([
         {
@@ -95,16 +95,23 @@ const register = async (req, res) => {
           activo: true,
           creado_en: new Date(),
         },
-      ])
-      .select();
+      ]);
 
     if (usuarioError) {
+      // Si falla, intentamos eliminar el usuario de Auth
+      await supabase.auth.admin.deleteUser(authData.user.id);
       return res.status(400).json({ message: usuarioError.message, code: 'DB_INSERT_ERROR' });
     }
 
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
-      user: usuarioData[0],
+      user: {
+        id: authData.user.id,
+        nombre,
+        email,
+        rol_id: rol_id || 5,
+        activo: true,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message });
