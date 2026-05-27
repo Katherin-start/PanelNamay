@@ -14,9 +14,11 @@ export interface User {
 export interface Patient {
   id: string;
   nombre: string;
-  email: string;
-  telefono: string;
-  fecha_nacimiento: string;
+  dni?: string;
+  email?: string;
+  telefono?: string;
+  fecha_nacimiento?: string;
+  direccion?: string;
   estado: 'activo' | 'inactivo';
   creado_en: string;
 }
@@ -39,19 +41,23 @@ export interface Payment {
   paciente_id: string;
   paciente_nombre: string;
   monto: number;
-  metodo_pago: 'efectivo' | 'tarjeta' | 'transferencia' | 'seguro';
-  estado: 'pendiente' | 'completado' | 'fallido' | 'cancelado';
+  metodo_pago: 'efectivo' | 'tarjeta' | 'transferencia' | 'seguro' | 'yape' | string;
+  estado: 'pendiente' | 'completado' | 'pagado' | 'fallido' | 'cancelado' | string;
   fecha: string;
-  servicio: string;
+  servicio?: string;
+  comprobante?: string;
+  estado_validacion?: string;
 }
 
 export interface ChatMessage {
   id: string;
   remitente_id: string;
-  remitente_nombre: string;
+  remitente_nombre?: string;
   destinatario_id?: string;
   mensaje: string;
+  contenido?: string;
   fecha_envio: string;
+  created_at?: string;
   leido: boolean;
 }
 
@@ -120,9 +126,10 @@ export interface RegisterFormData {
 
 export interface PatientFormData {
   nombre: string;
-  email: string;
-  telefono: string;
-  fecha_nacimiento: string;
+  dni?: string;
+  telefono?: string;
+  fecha_nacimiento?: string;
+  direccion?: string;
 }
 
 export interface AppointmentFormData {

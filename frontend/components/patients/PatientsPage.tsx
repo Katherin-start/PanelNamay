@@ -11,7 +11,6 @@ import {
   FunnelIcon,
   XMarkIcon,
   PhoneIcon,
-  EnvelopeIcon,
   IdentificationIcon,
 } from '@heroicons/react/24/outline';
 
@@ -21,10 +20,10 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
 };
 
 interface PatientForm {
-  nombre: string; email: string; telefono: string;
+  nombre: string; dni: string; telefono: string;
   fecha_nacimiento: string; genero: string; direccion: string;
 }
-const emptyForm: PatientForm = { nombre: '', email: '', telefono: '', fecha_nacimiento: '', genero: '', direccion: '' };
+const emptyForm: PatientForm = { nombre: '', dni: '', telefono: '', fecha_nacimiento: '', genero: '', direccion: '' };
 
 export default function PatientsPage() {
   const [patients, setPatients]     = useState<Patient[]>([]);
@@ -47,7 +46,7 @@ export default function PatientsPage() {
 
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nombre.trim() || !form.email.trim()) { setFormError('Nombre y email son obligatorios.'); return; }
+    if (!form.nombre.trim()) { setFormError('El nombre es obligatorio.'); return; }
     setSaving(true); setFormError('');
     try {
       const created = await apiClient.createPatient(form);
@@ -59,9 +58,10 @@ export default function PatientsPage() {
   };
 
   const filtered = patients.filter(
-    (p) =>
+      (p) =>
       (p.nombre ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (p.email ?? '').toLowerCase().includes(search.toLowerCase()),
+      (p.dni ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.telefono ?? '').toLowerCase().includes(search.toLowerCase()),
   );
 
   if (loading) {
@@ -207,7 +207,7 @@ export default function PatientsPage() {
                             <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
                               {patient.nombre}
                             </p>
-                            <p className="text-xs text-gray-400">{patient.email}</p>
+                            <p className="text-xs text-gray-400">DNI: {patient.dni || 'No registrado'}</p>
                           </div>
                         </div>
                       </td>
@@ -323,11 +323,11 @@ export default function PatientsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-                    Email <span className="text-red-500">*</span>
+                    DNI
                   </label>
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="paciente@email.com"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" required />
+                  <input type="text" value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })}
+                    placeholder="12345678"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Teléfono</label>
@@ -397,7 +397,7 @@ export default function PatientsPage() {
             </div>
             <div className="px-6 py-5 space-y-3">
               {[
-                { icon: EnvelopeIcon,  label: 'Email',              value: selectedPatient.email },
+                { icon: IdentificationIcon,  label: 'DNI',          value: selectedPatient.dni || 'No registrado' },
                 { icon: PhoneIcon,     label: 'Teléfono',           value: selectedPatient.telefono || 'No registrado' },
                 { icon: CalendarIcon,  label: 'Fecha de nacimiento',
                   value: selectedPatient.fecha_nacimiento

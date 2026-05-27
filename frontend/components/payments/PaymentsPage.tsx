@@ -16,6 +16,7 @@ import {
 
 const statusConfig: Record<string, { bg: string; text: string; label: string; Icon: any }> = {
   completado: { bg: '#DCFCE7', text: '#16A34A', label: 'COMPLETADO', Icon: CheckCircleIcon },
+  pagado: { bg: '#DCFCE7', text: '#16A34A', label: 'PAGADO', Icon: CheckCircleIcon },
   pendiente: { bg: '#FEF9C3', text: '#92400E', label: 'PENDIENTE', Icon: ExclamationCircleIcon },
   fallido: { bg: '#FEE2E2', text: '#DC2626', label: 'FALLIDO', Icon: XCircleIcon },
   cancelado: { bg: '#F3F4F6', text: '#6B7280', label: 'CANCELADO', Icon: XCircleIcon },
@@ -55,7 +56,8 @@ export default function PaymentsPage() {
   const filtered = payments.filter(
     (p) =>
       p.paciente_nombre?.toLowerCase().includes(search.toLowerCase()) ||
-      p.servicio?.toLowerCase().includes(search.toLowerCase()),
+      p.servicio?.toLowerCase().includes(search.toLowerCase()) ||
+      p.metodo_pago?.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleCreatePayment = async (e: React.FormEvent) => {
@@ -85,7 +87,7 @@ export default function PaymentsPage() {
   }
 
   const totalIngresos = payments
-    .filter((p) => p.estado === 'completado')
+    .filter((p) => ['completado', 'pagado'].includes((p.estado || '').toLowerCase()))
     .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
   const totalPendiente = payments
     .filter((p) => p.estado === 'pendiente')

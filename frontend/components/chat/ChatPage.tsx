@@ -6,9 +6,6 @@ import { apiClient } from '@/lib/api';
 import {
   PaperAirplaneIcon,
   MagnifyingGlassIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ChatPage() {
@@ -22,13 +19,8 @@ export default function ChatPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [msgs, ctcs] = await Promise.all([
-          apiClient.getChatMessages(),
-          apiClient.getChatContacts(),
-        ]);
-        const msgArr = Array.isArray(msgs) ? msgs : (msgs?.data ?? msgs?.messages ?? []);
+        const ctcs = await apiClient.getChatContacts();
         const ctcArr = Array.isArray(ctcs) ? ctcs : (ctcs?.data ?? ctcs?.contacts ?? []);
-        setMessages(msgArr);
         setContacts(ctcArr);
         if (ctcArr.length > 0) setSelectedContact(ctcArr[0]);
       } catch (error) {
@@ -41,6 +33,16 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    if (!selectedContact?.id) {
+      setMessages([]);
+      return;
+    }
+    apiClient.getChatMessages(selectedContact.id)
+      .then((data) => setMessages(Array.isArray(data) ? data : []))
+      .catch((error) => console.error('Error al cargar mensajes:', error));
+  }, [selectedContact?.id]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -48,9 +50,8 @@ export default function ChatPage() {
     e.preventDefault();
     if (!newMessage.trim()) return;
     try {
-      await apiClient.sendMessage({ mensaje: newMessage, destinatario_id: selectedContact?.id });
-      const data = await apiClient.getChatMessages();
-      setMessages(Array.isArray(data) ? data : (data?.data ?? data?.messages ?? []));
+      const sent = await apiClient.sendMessage({ contenido: newMessage, destinatario_id: selectedContact?.id });
+      setMessages((prev) => [...prev, sent]);
       setNewMessage('');
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
@@ -153,17 +154,7 @@ export default function ChatPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <PhoneIcon className="h-4 w-4 text-gray-400" />
-                  </button>
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <VideoCameraIcon className="h-4 w-4 text-gray-400" />
-                  </button>
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <EllipsisVerticalIcon className="h-4 w-4 text-gray-400" />
-                  </button>
-                </div>
+                <span className="text-xs text-gray-400">{selectedContact.correo}</span>
               </div>
 
               {/* Messages */}

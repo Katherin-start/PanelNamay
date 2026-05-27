@@ -9,7 +9,7 @@ class ApiClient {
 
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem('token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const config: RequestInit = {
       headers: {
@@ -72,12 +72,21 @@ class ApiClient {
     return this.request('/dashboard/attendance-alerts');
   }
 
+  private splitDateTime(value?: string) {
+    if (!value) return {};
+    const [fecha, rawHora] = value.split('T');
+    const hora = rawHora?.slice(0, 5);
+    return { fecha, hora };
+  }
+
   // Patients endpoints — backend usa /patients con campos correo/created_at
   private normalizePatient(p: any) {
     return {
       ...p,
       dni:        p.dni        ?? '',
+      email:      p.email      ?? p.correo ?? '',
       telefono:   p.telefono   ?? '',
+      direccion:  p.direccion  ?? '',
       creado_en:  p.creado_en  ?? p.created_at  ?? '',
       estado:     p.estado     ?? 'activo',
     };
@@ -95,10 +104,17 @@ class ApiClient {
   }
 
   async createPatient(patient: any) {
-    return this.request('/patients', {
+    const res = await this.request('/patients', {
       method: 'POST',
-      body: JSON.stringify(patient),
+      body: JSON.stringify({
+        nombre: patient.nombre,
+        dni: patient.dni,
+        telefono: patient.telefono,
+        fecha_nacimiento: patient.fecha_nacimiento,
+        direccion: patient.direccion,
+      }),
     });
+    return this.normalizePatient(res?.patient ?? res?.data ?? res);
   }
 
   async updatePatient(id: string, patient: any) {
@@ -119,10 +135,12 @@ class ApiClient {
   private normalizeAppointment(a: any) {
     return {
       ...a,
+      paciente_id:      a.paciente_id      ?? a.id_paciente ?? '',
+      doctor_id:        a.doctor_id        ?? a.id_odontologo ?? '',
       fecha_hora:      a.fecha_hora      ?? (a.fecha && a.hora ? `${a.fecha}T${a.hora}` : a.fecha ?? ''),
       paciente_nombre: a.paciente_nombre ?? a.pacientes?.nombre ?? '',
       doctor_nombre:   a.doctor_nombre   ?? a.usuarios?.nombre   ?? '',
-      servicio:        a.servicio        ?? a.descripcion ?? '',
+      servicio:        a.servicio        ?? a.descripcion ?? 'Consulta dental',
     };
   }
 
@@ -133,27 +151,41 @@ class ApiClient {
   }
 
   async createAppointment(appointment: any) {
-    return this.request('/appointments', {
+    const res = await this.request('/appointments', {
       method: 'POST',
-      body: JSON.stringify(appointment),
+      body: JSON.stringify({
+        id_paciente: appointment.id_paciente ?? appointment.paciente_id,
+        id_odontologo: appointment.id_odontologo ?? appointment.odontologo_id ?? appointment.doctor_id,
+        estado: appointment.estado,
+        ...this.splitDateTime(appointment.fecha_hora),
+      }),
     });
+    return this.normalizeAppointment(res?.data ?? res?.appointment ?? res);
   }
 
   async updateAppointment(id: string, appointment: any) {
-    return this.request(`/appointments/${id}`, {
+    const res = await this.request(`/appointments/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(appointment),
+      body: JSON.stringify({
+        id_paciente: appointment.id_paciente ?? appointment.paciente_id,
+        id_odontologo: appointment.id_odontologo ?? appointment.odontologo_id ?? appointment.doctor_id,
+        estado: appointment.estado,
+        ...this.splitDateTime(appointment.fecha_hora),
+      }),
     });
+    return this.normalizeAppointment(res?.data ?? res?.appointment ?? res);
   }
 
   // Payments endpoints — backend usa /payments con campo metodo en lugar de metodo_pago
   private normalizePayment(p: any) {
     return {
       ...p,
+      paciente_id:     p.paciente_id     ?? p.id_paciente ?? '',
       paciente_nombre: p.paciente_nombre ?? p.pacientes?.nombre ?? p.usuarios?.nombre ?? '',
       metodo_pago:     p.metodo_pago     ?? p.metodo     ?? '',
       fecha:           p.fecha           ?? p.fecha_pago ?? '',
-      servicio:        p.servicio        ?? p.descripcion ?? '',
+      monto:           Number(p.monto) || 0,
+      servicio:        p.servicio        ?? p.descripcion ?? 'Pago registrado',
     };
   }
 
@@ -164,10 +196,16 @@ class ApiClient {
   }
 
   async createPayment(payment: any) {
-    return this.request('/payments', {
+    const res = await this.request('/payments', {
       method: 'POST',
-      body: JSON.stringify(payment),
+      body: JSON.stringify({
+        monto: payment.monto,
+        metodo_pago: payment.metodo_pago ?? payment.metodo,
+        estado: payment.estado,
+        fecha: payment.fecha ?? payment.fecha_pago,
+      }),
     });
+    return this.normalizePayment(res?.payment ?? res?.data ?? res);
   }
 
   // Reports endpoints
@@ -231,16 +269,33 @@ class ApiClient {
     return res.blob();
   }
 
+  private normalizeChatMessage(m: any) {
+    return {
+      ...m,
+      mensaje: m.mensaje ?? m.contenido ?? '',
+      contenido: m.contenido ?? m.mensaje ?? '',
+      fecha_envio: m.fecha_envio ?? m.created_at ?? '',
+    };
+  }
+
   // Chat endpoints
-  async getChatMessages() {
-    return this.request('/chat/messages');
+  async getChatMessages(userId: string) {
+    if (!userId) return [];
+    const res = await this.request(`/chat/messages/${userId}`);
+    const arr: any[] = Array.isArray(res) ? res : (res?.messages ?? res?.data ?? []);
+    return arr.map((m) => this.normalizeChatMessage(m));
   }
 
   async sendMessage(message: any) {
-    return this.request('/chat/messages', {
+    const res = await this.request('/chat/messages', {
       method: 'POST',
-      body: JSON.stringify(message),
+      body: JSON.stringify({
+        destinatario_id: message.destinatario_id,
+        contenido: message.contenido ?? message.mensaje,
+        tipo: message.tipo ?? 'texto',
+      }),
     });
+    return this.normalizeChatMessage(res?.message ?? res?.data ?? res);
   }
 
   async getChatContacts() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Appointment } from '@/types';
+import { Appointment, Patient, User } from '@/types';
 import { apiClient } from '@/lib/api';
 import {
   CalendarIcon,
@@ -22,13 +22,16 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
 };
 
 interface ApptForm {
-  paciente_nombre: string; doctor_nombre: string; servicio: string;
-  fecha_hora: string; notas: string;
+  paciente_id: string; doctor_id: string;
+  fecha_hora: string; estado: Appointment['estado'];
+  servicio?: string; notas?: string;
 }
-const emptyApptForm: ApptForm = { paciente_nombre: '', doctor_nombre: '', servicio: '', fecha_hora: '', notas: '' };
+const emptyApptForm: ApptForm = { paciente_id: '', doctor_id: '', fecha_hora: '', estado: 'programada' };
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('todos');
@@ -43,8 +46,14 @@ export default function AppointmentsPage() {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const data = await apiClient.getAppointments();
+        const [data, patientData, userData] = await Promise.all([
+          apiClient.getAppointments(),
+          apiClient.getPatients(),
+          apiClient.getUsers().catch(() => []),
+        ]);
         setAppointments(Array.isArray(data) ? data : []);
+        setPatients(Array.isArray(patientData) ? patientData : []);
+        setDoctors((Array.isArray(userData) ? userData : []).filter((u: User) => u.rol === 'ODONTOLOGO'));
       } catch (error) {
         console.error('Error al cargar citas:', error);
       } finally {
@@ -56,14 +65,12 @@ export default function AppointmentsPage() {
 
   const handleCreateAppt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.paciente_nombre.trim() || !form.fecha_hora) { setFormError('Paciente y fecha son obligatorios.'); return; }
+    if (!form.paciente_id || !form.fecha_hora) { setFormError('Paciente y fecha son obligatorios.'); return; }
     setSaving(true); setFormError('');
     try {
       const created = await apiClient.createAppointment(form);
       const newAppt = created?.cita ?? created?.data ?? created;
-      if (newAppt && typeof newAppt === 'object' && newAppt.id) {
-        setAppointments((prev) => [newAppt, ...prev]);
-      }
+      if (newAppt && typeof newAppt === 'object' && newAppt.id) setAppointments((prev) => [newAppt, ...prev]);
       setShowNew(false); setForm(emptyApptForm);
     } catch (err: any) { setFormError(err.message ?? 'Error al guardar la cita.'); }
     finally { setSaving(false); }
@@ -243,7 +250,7 @@ export default function AppointmentsPage() {
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => { setEditAppt(apt); setEditForm({ estado: apt.estado, servicio: apt.servicio, notas: apt.notas, fecha_hora: apt.fecha_hora }); setFormError(''); }}
+                            onClick={() => { setEditAppt(apt); setEditForm({ estado: apt.estado, fecha_hora: apt.fecha_hora, paciente_id: apt.paciente_id, doctor_id: apt.doctor_id }); setFormError(''); }}
                             className="px-2.5 py-1 text-xs font-medium text-white rounded-lg hover:opacity-90"
                             style={{ backgroundColor: '#457B9D' }}
                           >
@@ -305,23 +312,26 @@ export default function AppointmentsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Paciente <span className="text-red-500">*</span></label>
-                <input type="text" value={form.paciente_nombre} onChange={(e) => setForm({ ...form, paciente_nombre: e.target.value })}
-                  placeholder="Nombre del paciente"
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" required />
+                <select value={form.paciente_id} onChange={(e) => setForm({ ...form, paciente_id: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white" required>
+                  <option value="">Seleccionar paciente...</option>
+                  {patients.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Doctor</label>
-                <input type="text" value={form.doctor_nombre} onChange={(e) => setForm({ ...form, doctor_nombre: e.target.value })}
-                  placeholder="Nombre del doctor"
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Servicio</label>
-                <select value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Odontologo</label>
+                <select value={form.doctor_id} onChange={(e) => setForm({ ...form, doctor_id: e.target.value })}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white">
-                  <option value="">Seleccionar...</option>
-                  {['Limpieza dental','Extracción','Ortodoncia','Blanqueamiento','Empaste','Radiografía','Cirugía oral'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                  <option value="">Sin asignar</option>
+                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Estado</label>
+                <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as Appointment['estado'] })}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white">
+                  {['programada','pendiente','confirmada','completada','cancelada'].map((s) => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
               </div>
@@ -329,12 +339,6 @@ export default function AppointmentsPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Fecha y hora <span className="text-red-500">*</span></label>
                 <input type="datetime-local" value={form.fecha_hora} onChange={(e) => setForm({ ...form, fecha_hora: e.target.value })}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" required />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Notas</label>
-                <textarea value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                  rows={2} placeholder="Observaciones adicionales..."
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] resize-none" />
               </div>
             </div>
             <div className="flex gap-3 pt-2">
@@ -414,15 +418,6 @@ export default function AppointmentsPage() {
             {formError && <div className="p-3 rounded-lg text-sm font-medium text-red-700" style={{ backgroundColor: '#FEE2E2' }}>{formError}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Servicio</label>
-                <select value={editForm.servicio ?? ''} onChange={(e) => setEditForm({ ...editForm, servicio: e.target.value })}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white">
-                  {['Limpieza dental','Extracción','Ortodoncia','Blanqueamiento','Empaste','Radiografía','Cirugía oral'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Estado</label>
                 <select value={editForm.estado ?? ''} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value as any })}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white">
@@ -435,11 +430,6 @@ export default function AppointmentsPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Fecha y hora</label>
                 <input type="datetime-local" value={editForm.fecha_hora ?? ''} onChange={(e) => setEditForm({ ...editForm, fecha_hora: e.target.value })}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D]" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Notas</label>
-                <textarea value={editForm.notas ?? ''} onChange={(e) => setEditForm({ ...editForm, notas: e.target.value })}
-                  rows={2} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] resize-none" />
               </div>
             </div>
             <div className="flex gap-3 pt-2">
