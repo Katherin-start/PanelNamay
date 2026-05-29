@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Patient } from '@/types';
+import { Patient, User } from '@/types';
 import { apiClient } from '@/lib/api';
 import {
   MagnifyingGlassIcon,
@@ -38,10 +38,35 @@ export default function PatientsPage() {
   const [apptPatient, setApptPatient]         = useState<Patient | null>(null);
 
   useEffect(() => {
-    apiClient.getPatients()
-      .then((data) => setPatients(Array.isArray(data) ? data : []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const fetchPatientUsers = async () => {
+      try {
+        const data = await apiClient.getUsers();
+        const users = Array.isArray(data) ? data : [];
+        const patientUsers = users.filter((u: User) => /paciente|cliente/i.test(u.rol));
+
+        if (patientUsers.length > 0) {
+          setPatients(
+            patientUsers.map((u: User) => ({
+              id: u.id,
+              nombre: u.nombre,
+              telefono: u.email ?? '',
+              dni: '',
+              creado_en: u.creado_en ?? new Date().toISOString(),
+              estado: u.activo ? 'activo' : 'inactivo',
+            }))
+          );
+          return;
+        }
+
+        const fallback = await apiClient.getPatients();
+        setPatients(Array.isArray(fallback) ? fallback : []);
+      } catch (error) {
+        console.error('Error al cargar pacientes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPatientUsers();
   }, []);
 
   const handleAddPatient = async (e: React.FormEvent) => {

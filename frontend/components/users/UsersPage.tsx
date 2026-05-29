@@ -84,15 +84,17 @@ export default function UsersPage() {
     }
   };
 
-  const filtered = users.filter(
+  const staffUsers = users.filter((u) => !/(paciente|cliente)/i.test(u.rol));
+
+  const filtered = staffUsers.filter(
     (u) =>
       (u.nombre ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (u.email ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalActivos = users.filter((u) => u.activo).length;
-  const totalInactivos = users.filter((u) => !u.activo).length;
-  const totalAdmins = users.filter((u) => u.rol === 'admin' || u.rol === 'ADMINISTRADOR').length;
+  const totalActivos = staffUsers.filter((u) => u.activo).length;
+  const totalInactivos = staffUsers.filter((u) => !u.activo).length;
+  const totalAdmins = staffUsers.filter((u) => u.rol === 'admin' || u.rol === 'ADMINISTRADOR').length;
 
   if (loading) {
     return (
@@ -261,7 +263,7 @@ export default function UsersPage() {
         </div>
         {filtered.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Mostrando {filtered.length} de {users.length} usuarios</span>
+            <span>Mostrando {filtered.length} de {staffUsers.length} usuarios</span>
           </div>
         )}
       </div>
