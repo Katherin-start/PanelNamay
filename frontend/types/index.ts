@@ -56,6 +56,11 @@ export interface ChatMessage {
   destinatario_id?: string;
   mensaje: string;
   contenido?: string;
+  tipo?: 'texto' | 'imagen' | 'documento';
+  attachment_url?: string;
+  attachment_name?: string;
+  attachment_mime?: string;
+  caption?: string;
   fecha_envio: string;
   created_at?: string;
   leido: boolean;

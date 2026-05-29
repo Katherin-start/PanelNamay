@@ -414,34 +414,25 @@ const getNotifications = async (req, res) => {
     yesterday.setDate(yesterday.getDate() - 1);
 
     const { data: nuevosMensajes } = await supabase
-      .from('mensajes_chat')
-      .select('id, contenido, created_at, remitente_id, destinatario_id, usuarios:remitente_id(nombre, rol)')
-      .gte('created_at', yesterday.toISOString())
-      .order('created_at', { ascending: false })
+      .from('mensajes')
+      .select('id, mensaje, fecha, id_usuario, id_conversacion')
+      .gte('fecha', yesterday.toISOString())
+      .order('fecha', { ascending: false })
       .limit(40);
 
-    nuevosMensajes?.forEach(msg => {
-      if (msg.remitente_id === currentUserId || msg.destinatario_id === currentUserId) {
-        notifications.push({
-          id: `msg_${msg.id}`,
-          type: 'chat',
-          title: 'Nuevo mensaje',
-          message: `Mensaje reciente: ${msg.contenido.substring(0, 50)}...`,
-          timestamp: msg.created_at,
-          priority: 'medium'
-        });
+    nuevosMensajes?.forEach((msg) => {
+      if (msg.id_usuario === currentUserId) {
+        return;
       }
 
-      if (userRole === 'PRACTICANTE' && msg.destinatario_id === currentUserId && msg['usuarios']?.rol === 'ODONTOLOGO') {
-        notifications.push({
-          id: `odontologo_msg_${msg.id}`,
-          type: 'notice',
-          title: 'Aviso del odontólogo',
-          message: `${msg.contenido.substring(0, 100)}...`,
-          timestamp: msg.created_at,
-          priority: 'high'
-        });
-      }
+      notifications.push({
+        id: `msg_${msg.id}`,
+        type: 'chat',
+        title: 'Nuevo mensaje',
+        message: `Mensaje reciente: ${msg.mensaje.substring(0, 50)}...`,
+        timestamp: msg.fecha,
+        priority: 'medium',
+      });
     });
 
     const { data: nuevasCitas } = await supabase

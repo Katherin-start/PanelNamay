@@ -15,6 +15,7 @@ const patientRoutes = require('./routes/patientRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const setupRoutes = require('./routes/setupRoutes');
 // const alertRoutes = require('./routes/alertRoutes');
 
 const app = express();
@@ -26,6 +27,7 @@ app.use(morgan('combined'));
 app.use(express.json());
 
 // Rutas
+app.use('/api/setup', setupRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/mobile', mobileRoutes);
 app.use('/api/dashboard', dashboardRoutes);

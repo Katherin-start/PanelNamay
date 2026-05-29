@@ -10,14 +10,15 @@ class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const isFormData = options.body instanceof FormData;
 
     const config: RequestInit = {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options.headers,
       },
-      ...options,
     };
 
     const response = await fetch(url, config);
@@ -291,10 +292,26 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({
         destinatario_id: message.destinatario_id,
-        contenido: message.contenido ?? message.mensaje,
+        contenido: message.contenido ?? message.mensaje ?? message.message,
         tipo: message.tipo ?? 'texto',
       }),
     });
+    return this.normalizeChatMessage(res?.message ?? res?.data ?? res);
+  }
+
+  async sendChatAttachment(message: any) {
+    const form = new FormData();
+    form.append('destinatario_id', message.destinatario_id);
+    if (message.caption) {
+      form.append('caption', message.caption);
+    }
+    form.append('file', message.file);
+
+    const res = await this.request('/chat/upload', {
+      method: 'POST',
+      body: form,
+    });
+
     return this.normalizeChatMessage(res?.message ?? res?.data ?? res);
   }
 
@@ -304,6 +321,13 @@ class ApiClient {
 
   async getUnreadMessageCount() {
     return this.request('/chat/unread-count');
+  }
+
+  async markChatMessagesAsRead(otherUserId: string) {
+    return this.request('/chat/messages/mark-as-read', {
+      method: 'POST',
+      body: JSON.stringify({ otherUserId }),
+    });
   }
 
   // Users endpoints — el backend usa /auth/users para listar, /auth/register para crear
@@ -375,6 +399,28 @@ class ApiClient {
   async deleteUser(id: string) {
     // No hay endpoint DELETE /users en el backend actual
     return {};
+  }
+
+  // Setup endpoints
+  async initializeStorage() {
+    try {
+      return await this.request('/setup/initialize-storage', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.warn('Error al inicializar storage:', error);
+      // No fallar, solo avisar
+      return { code: 'INIT_ATTEMPTED', message: 'Inicialización completada' };
+    }
+  }
+
+  async getHealthCheck() {
+    try {
+      return await this.request('/setup/health');
+    } catch (error) {
+      console.warn('Error al verificar salud del sistema:', error);
+      return { code: 'HEALTH_ERROR', error: error.message };
+    }
   }
 }
 

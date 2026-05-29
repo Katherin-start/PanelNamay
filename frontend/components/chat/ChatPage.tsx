@@ -1,32 +1,48 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { ChatMessage, User } from '@/types';
 import { apiClient } from '@/lib/api';
+import { useInitializeStorage } from '@/hooks/useStorage';
 import {
   PaperAirplaneIcon,
   MagnifyingGlassIcon,
+  PaperClipIcon,
+  CheckIcon,
+  ChecksIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ChatPage() {
+  // Inicializar storage automáticamente
+  useInitializeStorage();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [searchContact, setSearchContact] = useState('');
   const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const selectedContactRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const contactsPollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [profileRes, chatResult, userResult] = await Promise.all([
+        const [profileRes, chatResult, userResult] = (await Promise.all([
           apiClient.getProfile().catch(() => null),
           apiClient.getChatContacts().catch(() => []),
           apiClient.getUsers().catch(() => []),
-        ]);
+        ])) as [any, any, any];
 
         const currentUserId = profileRes?.profile?.id ?? '';
+        setCurrentUserId(currentUserId);
 
         const chatContacts = Array.isArray(chatResult)
           ? chatResult
@@ -74,19 +90,182 @@ export default function ChatPage() {
     fetchData();
   }, []);
 
+  const refreshContacts = async () => {
+    try {
+      const chatResult = await apiClient.getChatContacts();
+      const chatContacts = Array.isArray(chatResult)
+        ? chatResult
+        : chatResult?.contacts ?? chatResult?.data ?? [];
+
+      const contactMap = new Map(contacts.map((contact) => [contact.id, contact]));
+      chatContacts.forEach((contact: any) => {
+        contactMap.set(contact.id, {
+          ...contactMap.get(contact.id),
+          ...contact,
+          mensajes_no_leidos: contact.mensajes_no_leidos ?? 0,
+        });
+      });
+
+      setContacts(Array.from(contactMap.values()));
+    } catch (error) {
+      console.error('Error al refrescar contactos:', error);
+    }
+  };
+
+  useEffect(() => {
+    selectedContactRef.current = selectedContact;
+  }, [selectedContact]);
+
+  // Auto-refresh messages every 3 seconds when a contact is selected
   useEffect(() => {
     if (!selectedContact?.id) {
       setMessages([]);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
       return;
     }
-    apiClient.getChatMessages(selectedContact.id)
-      .then((data) => setMessages(Array.isArray(data) ? data : []))
-      .catch((error) => console.error('Error al cargar mensajes:', error));
-  }, [selectedContact?.id]);
+
+    const loadMessages = async () => {
+      try {
+        const data = await apiClient.getChatMessages(selectedContact.id);
+        setMessages(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error al cargar mensajes:', error);
+      }
+    };
+
+    // Load messages immediately
+    loadMessages();
+
+    // Mark as read via API
+    if (currentUserId) {
+      apiClient.markChatMessagesAsRead(selectedContact.id).catch(err =>
+        console.error('Error al marcar como leído:', err)
+      );
+    }
+
+    // Setup auto-polling every 3 seconds
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    
+    pollIntervalRef.current = setInterval(() => {
+      loadMessages();
+    }, 3000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [selectedContact?.id, currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+    const socket = io(socketUrl);
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Socket conectado:', socket.id);
+      socket.emit('join', currentUserId);
+    });
+
+    socket.on('new_message', (message: any) => {
+      const normalized = normalizeChatMessage(message);
+      const currentContact = selectedContactRef.current;
+
+      if (normalized.remitente_id === currentContact?.id || normalized.destinatario_id === currentContact?.id) {
+        setMessages((prev) => {
+          const exists = prev.some(m => m.id === normalized.id);
+          return exists ? prev : [...prev, normalized];
+        });
+      }
+
+      refreshContacts();
+    });
+
+    socket.on('messages_read', (data: any) => {
+      const currentContact = selectedContactRef.current;
+      if (currentContact?.id === data.by) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.remitente_id === currentUserId ? { ...msg, leido: true } : msg
+          )
+        );
+      }
+      refreshContacts();
+    });
+
+    socket.on('message_read_receipt', (data: any) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === data.messageId ? { ...msg, leido: true } : msg
+        )
+      );
+    });
+
+    // Setup auto-refresh de contactos cada 5 segundos
+    if (contactsPollRef.current) {
+      clearInterval(contactsPollRef.current);
+    }
+
+    contactsPollRef.current = setInterval(() => {
+      refreshContacts();
+    }, 5000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+      if (contactsPollRef.current) {
+        clearInterval(contactsPollRef.current);
+      }
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const normalizeChatMessage = (message: any) => {
+    const rawText = message?.mensaje ?? message?.contenido ?? '';
+    let attachment: any = null;
+    let texto = rawText;
+
+    if (typeof rawText === 'string') {
+      try {
+        const parsed = JSON.parse(rawText);
+        if (parsed?.type && parsed?.url) {
+          attachment = parsed;
+          texto = parsed.text ?? parsed.name ?? '';
+        }
+      } catch (err) {
+        attachment = null;
+      }
+    }
+
+    return {
+      id: message?.id ?? `${Date.now()}`,
+      remitente_id: message?.remitente_id ?? '',
+      destinatario_id: message?.destinatario_id ?? '',
+      mensaje: texto,
+      contenido: texto,
+      tipo: attachment?.type ?? message?.tipo ?? 'texto',
+      attachment_url: attachment?.url ?? message?.attachment_url,
+      attachment_name: attachment?.name ?? message?.attachment_name,
+      attachment_mime: attachment?.mime ?? message?.attachment_mime,
+      caption: attachment?.text ?? message?.caption,
+      fecha_envio: message?.fecha_envio ?? message?.created_at ?? new Date().toISOString(),
+      leido: Boolean(message?.leido),
+    };
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,22 +274,63 @@ export default function ChatPage() {
       alert('Selecciona un contacto válido antes de enviar el mensaje.');
       return;
     }
-    if (!newMessage.trim()) {
-      alert('Escribe un mensaje antes de enviar.');
+
+    if (!newMessage.trim() && !selectedFile) {
+      alert('Escribe un mensaje o selecciona un archivo antes de enviar.');
       return;
     }
+
+    // Validar tamaño del archivo
+    if (selectedFile && selectedFile.size > 20 * 1024 * 1024) {
+      alert('El archivo no puede ser mayor a 20 MB. Por favor selecciona uno más pequeño.');
+      return;
+    }
+
     try {
-      const sent = await apiClient.sendMessage({
-        destinatario_id: recipientId,
-        contenido: newMessage,
-      });
-      setMessages((prev) => [...prev, sent]);
+      let sent;
+      if (selectedFile) {
+        setIsUploading(true);
+        console.log(`Enviando archivo: ${selectedFile.name} (${selectedFile.size} bytes)`);
+        
+        sent = await apiClient.sendChatAttachment({
+          destinatario_id: recipientId,
+          file: selectedFile,
+          caption: newMessage.trim(),
+        });
+        setSelectedFile(null);
+      } else {
+        sent = await apiClient.sendMessage({
+          destinatario_id: recipientId,
+          contenido: newMessage,
+        });
+      }
+
+      setMessages((prev) => [...prev, normalizeChatMessage(sent?.message ?? sent)]);
       setNewMessage('');
     } catch (error: any) {
       console.error('Error al enviar mensaje:', error);
-      alert(`No se pudo enviar el mensaje: ${error?.message ?? 'Error desconocido'}`);
+      
+      let errorMessage = 'No se pudo enviar el mensaje';
+      
+      // Mensajes de error más informativos
+      if (error?.message?.includes('Bucket not found')) {
+        errorMessage = 'Error de configuración: Bucket de archivos no configurado. Contacta al administrador.';
+      } else if (error?.message?.includes('Permission denied')) {
+        errorMessage = 'Permiso denegado. Verifica tu acceso.';
+      } else if (error?.message?.includes('File too large')) {
+        errorMessage = 'El archivo es demasiado grande (máximo 20 MB).';
+      } else if (error?.message?.includes('ERR_CONNECTION_REFUSED')) {
+        errorMessage = 'Error de conexión: El servidor no está disponible.';
+      } else {
+        errorMessage = `No se pudo enviar: ${error?.message ?? 'Error desconocido'}`;
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsUploading(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -242,14 +462,51 @@ export default function ChatPage() {
                               borderRadius: isMine ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
                             }}
                           >
-                            {message.mensaje}
+                            {message.tipo === 'imagen' && message.attachment_url ? (
+                              <img
+                                src={message.attachment_url}
+                                alt={message.attachment_name ?? 'Imagen'}
+                                className="max-w-full rounded-xl"
+                              />
+                            ) : message.tipo === 'documento' && message.attachment_url ? (
+                              <a
+                                href={message.attachment_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-white underline"
+                                style={{ color: isMine ? 'white' : '#1D3557' }}
+                              >
+                                <PaperClipIcon className="h-4 w-4" />
+                                {message.attachment_name ?? 'Documento'}
+                              </a>
+                            ) : (
+                              <span>{message.mensaje}</span>
+                            )}
+
+                            {message.caption && message.tipo !== 'texto' ? (
+                              <p className="text-[11px] text-white/80 mt-2">{message.caption}</p>
+                            ) : null}
                           </div>
-                          <p className={`text-xs text-gray-400 mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
-                            {new Date(message.fecha_envio).toLocaleTimeString('es-PE', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                          <div className={`mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
+                            <div className="flex items-center gap-1 justify-end" style={isMine ? {} : { justifyContent: 'flex-start' }}>
+                              <p className="text-xs text-gray-400">
+                                {new Date(message.fecha_envio).toLocaleTimeString('es-PE', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              {isMine && (
+                                message.leido ? (
+                                  <div className="flex gap-0.5">
+                                    <CheckIcon className="h-3 w-3 text-blue-500" />
+                                    <CheckIcon className="h-3 w-3 text-blue-500 -ml-1.5" />
+                                  </div>
+                                ) : (
+                                  <CheckIcon className="h-3 w-3 text-gray-400" />
+                                )
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -261,23 +518,69 @@ export default function ChatPage() {
               {/* Input */}
               <form
                 onSubmit={handleSendMessage}
-                className="px-4 py-3 border-t border-gray-100 flex items-center gap-3"
+                className="px-4 py-3 border-t border-gray-100 space-y-3"
               >
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Escribe un mensaje..."
-                  className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D]"
-                />
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim()}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: '#1D3557' }}
-                >
-                  <PaperAirplaneIcon className="h-4 w-4" />
-                </button>
+                {selectedFile && (
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900 truncate">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        {(selectedFile.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-blue-600 hover:text-blue-700 font-semibold text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors">
+                    <PaperClipIcon className="h-4 w-4" />
+                    Adjuntar
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,.json,.xml"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        if (file && file.size > 20 * 1024 * 1024) {
+                          alert('El archivo no puede ser mayor a 20 MB');
+                          return;
+                        }
+                        setSelectedFile(file);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={selectedFile ? 'Añade un comentario opcional...' : 'Escribe un mensaje...'}
+                    className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newMessage.trim() && !selectedFile || isUploading}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                    style={{ backgroundColor: '#1D3557' }}
+                    title={isUploading ? 'Enviando...' : 'Enviar'}
+                  >
+                    {isUploading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <PaperAirplaneIcon className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </form>
             </>
           ) : (
