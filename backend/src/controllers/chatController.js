@@ -34,15 +34,20 @@ const getChatMessages = async (req, res) => {
 
 const sendMessage = async (req, res) => {
   try {
-    const { destinatario_id, contenido, tipo = 'texto' } = req.body;
+    const { destinatario_id, contenido, mensaje, tipo = 'texto' } = req.body;
+    const body = contenido ?? mensaje;
     const remitente_id = req.user.id;
+
+    if (!destinatario_id || !body) {
+      return res.status(400).json({ message: 'destinatario_id y contenido son requeridos', code: 'MISSING_FIELDS' });
+    }
 
     const { data: message, error } = await supabase
       .from('mensajes_chat')
       .insert([{
         remitente_id,
         destinatario_id,
-        contenido,
+        contenido: body,
         tipo,
         leido: false
       }])
@@ -62,57 +67,96 @@ const sendMessage = async (req, res) => {
   }
 };
 
+const rolIdToName = (rolId) => {
+  const map = {
+    1: 'ADMINISTRADOR',
+    2: 'ODONTOLOGO',
+    3: 'RECEPCIONISTA',
+    4: 'CAJERO',
+    5: 'PRACTICANTE',
+  };
+  return map[rolId] || 'PRACTICANTE';
+};
+
 const getChatContacts = async (req, res) => {
   try {
     const currentUserId = req.user.id;
 
-    const { data: conversations, error } = await supabase
+    const { data: conversations, error: convError } = await supabase
       .from('mensajes_chat')
       .select('id, remitente_id, destinatario_id, contenido, created_at')
       .or(`remitente_id.eq.${currentUserId},destinatario_id.eq.${currentUserId}`)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      return res.status(500).json({ message: 'Error al obtener contactos', code: 'CONTACTS_ERROR', error: error.message });
+    if (convError) {
+      return res.status(500).json({ message: 'Error al obtener contactos', code: 'CONTACTS_ERROR', error: convError.message });
     }
 
-    const contactIds = new Set();
-    const contactsData = [];
-
+    const contactDataById = new Map();
     conversations?.forEach(conv => {
       const otherId = conv.remitente_id === currentUserId ? conv.destinatario_id : conv.remitente_id;
-
-      if (!contactIds.has(otherId)) {
-        contactIds.add(otherId);
-        contactsData.push({
+      const existing = contactDataById.get(otherId);
+      if (!existing || new Date(conv.created_at) > new Date(existing.last_message_at)) {
+        contactDataById.set(otherId, {
           id: otherId,
           last_message: conv.contenido,
-          last_message_at: conv.created_at
+          last_message_at: conv.created_at,
         });
       }
     });
 
-    if (contactIds.size > 0) {
-      const ids = Array.from(contactIds);
-      const { data: users } = await supabase
-        .from('usuarios')
-        .select('id, nombre, correo')
-        .in('id', ids);
+    const { data: users, error: usersError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, correo, rol_id, activo, roles:rol_id(id, nombre)')
+      .neq('id', currentUserId)
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
 
-      const usersMap = new Map(users?.map(user => [user.id, user]));
-
-      contactsData.forEach(contact => {
-        const user = usersMap.get(contact.id);
-        if (user) {
-          contact.nombre = user.nombre;
-          contact.correo = user.correo;
-        }
-      });
+    if (usersError) {
+      return res.status(500).json({ message: 'Error al obtener usuarios', code: 'USERS_ERROR', error: usersError.message });
     }
+
+    const { data: unreadMessages, error: unreadError } = await supabase
+      .from('mensajes_chat')
+      .select('remitente_id')
+      .eq('destinatario_id', currentUserId)
+      .eq('leido', false);
+
+    if (unreadError) {
+      return res.status(500).json({ message: 'Error al contar mensajes no leídos', code: 'UNREAD_ERROR', error: unreadError.message });
+    }
+
+    const unreadCountMap = new Map();
+    unreadMessages?.forEach((msg) => {
+      const count = unreadCountMap.get(msg.remitente_id) ?? 0;
+      unreadCountMap.set(msg.remitente_id, count + 1);
+    });
+
+    const contacts = (users || []).map((user) => {
+      const contactInfo = contactDataById.get(user.id) ?? {};
+      return {
+        id: user.id,
+        nombre: user.nombre,
+        correo: user.correo,
+        rol: user.roles?.nombre || rolIdToName(user.rol_id),
+        last_message: contactInfo.last_message ?? '',
+        last_message_at: contactInfo.last_message_at ?? null,
+        mensajes_no_leidos: unreadCountMap.get(user.id) ?? 0,
+      };
+    });
+
+    contacts.sort((a, b) => {
+      if (a.last_message_at && b.last_message_at) {
+        return new Date(b.last_message_at) - new Date(a.last_message_at);
+      }
+      if (a.last_message_at) return -1;
+      if (b.last_message_at) return 1;
+      return a.nombre.localeCompare(b.nombre);
+    });
 
     res.json({
       code: 'CONTACTS_SUCCESS',
-      contacts: contactsData
+      contacts,
     });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });

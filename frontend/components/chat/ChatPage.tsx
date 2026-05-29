@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { ChatMessage } from '@/types';
+import { ChatMessage, User } from '@/types';
 import { apiClient } from '@/lib/api';
 import {
   PaperAirplaneIcon,
@@ -13,16 +13,58 @@ export default function ChatPage() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
+  const [searchContact, setSearchContact] = useState('');
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const ctcs = await apiClient.getChatContacts();
-        const ctcArr = Array.isArray(ctcs) ? ctcs : (ctcs?.data ?? ctcs?.contacts ?? []);
-        setContacts(ctcArr);
-        if (ctcArr.length > 0) setSelectedContact(ctcArr[0]);
+        const [profileRes, chatResult, userResult] = await Promise.all([
+          apiClient.getProfile().catch(() => null),
+          apiClient.getChatContacts().catch(() => []),
+          apiClient.getUsers().catch(() => []),
+        ]);
+
+        const currentUserId = profileRes?.profile?.id ?? '';
+
+        const chatContacts = Array.isArray(chatResult)
+          ? chatResult
+          : chatResult?.contacts ?? chatResult?.data ?? [];
+
+        const users = Array.isArray(userResult)
+          ? userResult
+          : userResult?.users ?? userResult?.data ?? [];
+
+        const allUsers = (users as User[])
+          .filter((user) => user.id && user.id !== currentUserId)
+          .map((user) => ({
+            id: user.id,
+            nombre: user.nombre,
+            correo: user.email,
+            rol: user.rol,
+            mensajes_no_leidos: 0,
+          }));
+
+        const contactsMap = new Map();
+
+        chatContacts.forEach((contact: any) => {
+          contactsMap.set(contact.id, {
+            ...contact,
+            mensajes_no_leidos: contact.mensajes_no_leidos ?? 0,
+          });
+        });
+
+        allUsers.forEach((user) => {
+          if (!contactsMap.has(user.id)) {
+            contactsMap.set(user.id, user);
+          }
+        });
+
+        const mergedContacts = Array.from(contactsMap.values());
+
+        setContacts(mergedContacts);
+        if (mergedContacts.length > 0) setSelectedContact(mergedContacts[0]);
       } catch (error) {
         console.error('Error al cargar chat:', error);
       } finally {
@@ -48,13 +90,25 @@ export default function ChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    const recipientId = selectedContact?.id || selectedContact?.userId || selectedContact?.destinatario_id;
+    if (!recipientId) {
+      alert('Selecciona un contacto válido antes de enviar el mensaje.');
+      return;
+    }
+    if (!newMessage.trim()) {
+      alert('Escribe un mensaje antes de enviar.');
+      return;
+    }
     try {
-      const sent = await apiClient.sendMessage({ contenido: newMessage, destinatario_id: selectedContact?.id });
+      const sent = await apiClient.sendMessage({
+        destinatario_id: recipientId,
+        contenido: newMessage,
+      });
       setMessages((prev) => [...prev, sent]);
       setNewMessage('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al enviar mensaje:', error);
+      alert(`No se pudo enviar el mensaje: ${error?.message ?? 'Error desconocido'}`);
     }
   };
 
@@ -88,7 +142,9 @@ export default function ChatPage() {
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar contacto..."
+                value={searchContact}
+                onChange={(e) => setSearchContact(e.target.value)}
+                placeholder="Buscar contacto o rol..."
                 className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none"
               />
             </div>
@@ -97,14 +153,20 @@ export default function ChatPage() {
             {contacts.length === 0 ? (
               <div className="p-4 text-center text-xs text-gray-400">Sin contactos</div>
             ) : (
-              contacts.map((contact) => (
-                <button
-                  key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedContact?.id === contact.id ? 'bg-blue-50' : ''
-                  }`}
-                >
+              contacts
+                .filter((contact) =>
+                  `${contact.nombre ?? ''} ${contact.rol ?? ''}`
+                    .toLowerCase()
+                    .includes(searchContact.toLowerCase())
+                )
+                .map((contact) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => setSelectedContact(contact)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      selectedContact?.id === contact.id ? 'bg-blue-50' : ''
+                    }`}
+                  >
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
                     style={{ backgroundColor: '#457B9D' }}
