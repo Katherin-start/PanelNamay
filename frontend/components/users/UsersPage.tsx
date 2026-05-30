@@ -79,8 +79,10 @@ export default function UsersPage() {
     try {
       await apiClient.deleteUser(id);
       setUsers(users.filter((u) => u.id !== id));
-    } catch (error) {
+      setFormError('');
+    } catch (error: any) {
       console.error('Error al eliminar usuario:', error);
+      setFormError(error.message ?? 'Error al eliminar el usuario.');
     }
   };
 

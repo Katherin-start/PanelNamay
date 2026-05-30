@@ -387,12 +387,21 @@ export default function ChatPage() {
                       selectedContact?.id === contact.id ? 'bg-blue-50' : ''
                     }`}
                   >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                    style={{ backgroundColor: '#457B9D' }}
-                  >
-                    {contact.nombre?.charAt(0).toUpperCase()}
-                  </div>
+                  {contact.foto_perfil ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={contact.foto_perfil}
+                      alt={contact.nombre}
+                      className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                      style={{ backgroundColor: '#457B9D' }}
+                    >
+                      {contact.nombre?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: '#1D3557' }}>
                       {contact.nombre}
@@ -420,12 +429,21 @@ export default function ChatPage() {
               {/* Chat header */}
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                    style={{ backgroundColor: '#457B9D' }}
-                  >
-                    {selectedContact.nombre?.charAt(0).toUpperCase()}
-                  </div>
+                  {selectedContact.foto_perfil ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={selectedContact.foto_perfil}
+                      alt={selectedContact.nombre}
+                      className="w-9 h-9 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ backgroundColor: '#457B9D' }}
+                    >
+                      {selectedContact.nombre?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
                       {selectedContact.nombre}

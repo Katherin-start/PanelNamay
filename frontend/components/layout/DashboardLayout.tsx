@@ -31,7 +31,7 @@ const allNavigation = [
   { name: 'Citas', href: '/citas', icon: CalendarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA'] },
   { name: 'Pagos', href: '/pagos', icon: CreditCardIcon, roles: ['ADMINISTRADOR', 'CAJERO'] },
   { name: 'Reportes', href: '/reportes', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'CAJERO', 'RECEPCIONISTA', 'PRACTICANTE'] },
-  { name: 'Chat', href: '/chat', icon: ChatBubbleLeftRightIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'PRACTICANTE'] },
+  { name: 'Chat', href: '/chat', icon: ChatBubbleLeftRightIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE'] },
   { name: 'Usuarios', href: '/usuarios', icon: UserGroupIcon, roles: ['ADMINISTRADOR'] },
 ];
 
@@ -56,8 +56,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showProfile, setShowProfile] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, setUser, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -104,6 +106,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try { await apiClient.logout(); } catch {}
     setUser(null);
     router.push('/login');
+  };
+
+  const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede exceder 5MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const res = await apiClient.uploadProfilePhoto(file);
+      const fotoUrl = res?.foto_perfil;
+      if (fotoUrl && user) {
+        setUser({ ...user, foto_perfil: fotoUrl });
+      }
+      alert('Foto de perfil actualizada exitosamente');
+    } catch (error: any) {
+      console.error('Error al subir foto:', error);
+      alert(error.message ?? 'Error al subir la foto de perfil');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   if (isLoading || !user) {
@@ -203,12 +238,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={() => { setShowProfile(true); setSidebarOpen(false); }}
             className="w-full flex items-center gap-3 px-3 py-2 mb-1 rounded-lg hover:bg-white/10 transition-all duration-150 text-left"
           >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-              style={{ backgroundColor: '#E63946' }}
-            >
-              {initials}
-            </div>
+            {user.foto_perfil ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.foto_perfil}
+                alt={user.nombre}
+                className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                style={{ backgroundColor: '#E63946' }}
+              >
+                {initials}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-white text-sm font-medium truncate">{user.nombre}</p>
               <p className="text-xs truncate" style={{ color: '#457B9D' }}>{user.email}</p>
@@ -304,12 +348,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
                 className="flex items-center gap-2 pl-2 ml-1 border-l border-gray-200 hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors"
               >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                  style={{ backgroundColor: '#1D3557' }}
-                >
-                  {initials}
-                </div>
+                {user.foto_perfil ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.foto_perfil}
+                    alt={user.nombre}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: '#1D3557' }}
+                  >
+                    {initials}
+                  </div>
+                )}
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-semibold leading-tight" style={{ color: '#1D3557' }}>
                     {user.nombre?.split(' ')[0]}
@@ -324,11 +377,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {/* Header */}
                   <div className="px-5 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1D3557 0%, #457B9D 100%)' }}>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 ring-2 ring-white/30"
-                        style={{ backgroundColor: '#E63946' }}
-                      >
-                        {initials}
+                      <div className="relative flex-shrink-0">
+                        {user.foto_perfil ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={user.foto_perfil}
+                            alt={user.nombre}
+                            className="w-12 h-12 rounded-full object-cover ring-2 ring-white/30"
+                          />
+                        ) : (
+                          <div
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ring-2 ring-white/30"
+                            style={{ backgroundColor: '#E63946' }}
+                          >
+                            {initials}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-50 disabled:opacity-50 transition-all"
+                          title="Cambiar foto de perfil"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="#1D3557" viewBox="0 0 20 20">
+                            <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
+                          </svg>
+                        </button>
                       </div>
                       <div className="min-w-0">
                         <p className="text-white font-semibold text-sm truncate">{user.nombre}</p>
@@ -386,6 +460,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* Hidden file input for profile photo */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleProfilePhotoChange}
+        className="hidden"
+      />
     </div>
   );
 }

@@ -1,8 +1,10 @@
 const express = require('express');
-const { login, register, logout, getProfile, getUsers } = require('../controllers/authController');
+const multer = require('multer');
+const { login, register, logout, getProfile, getUsers, updateProfilePhoto, deleteUser } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 // Rutas públicas
@@ -13,7 +15,9 @@ router.post('/login', login);
 router.post('/register', authMiddleware, register);
 router.post('/logout', authMiddleware, logout);
 router.get('/profile', authMiddleware, getProfile);
+router.put('/profile/photo', authMiddleware, upload.single('foto'), updateProfilePhoto);
 // Cualquier usuario autenticado puede ver la lista de usuarios
 router.get('/users', authMiddleware, getUsers);
+router.delete('/users/:id', authMiddleware, deleteUser);
 
 module.exports = router;

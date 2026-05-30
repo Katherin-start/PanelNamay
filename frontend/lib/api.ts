@@ -450,8 +450,22 @@ class ApiClient {
   }
 
   async deleteUser(id: string) {
-    // No hay endpoint DELETE /users en el backend actual
-    return {};
+    const res = await this.request(`/auth/users/${id}`, {
+      method: 'DELETE',
+    });
+    return res;
+  }
+
+  // Profile photo endpoints
+  async uploadProfilePhoto(file: File) {
+    const formData = new FormData();
+    formData.append('foto', file);
+    
+    const res = await this.request('/auth/profile/photo', {
+      method: 'PUT',
+      body: formData,
+    });
+    return res;
   }
 
   // Setup endpoints

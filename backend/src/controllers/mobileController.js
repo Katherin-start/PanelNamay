@@ -161,12 +161,52 @@ const mobileLogin = async (req, res) => {
   }
 };
 
-// Obtener perfil del cliente
+// Obtener odontólogos activos para la app móvil
+const getMobileDoctors = async (req, res) => {
+  try {
+    const { data: usuarios, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      return res.status(500).json({
+        message: 'Error al obtener odontólogos',
+        code: 'DOCTORS_ERROR',
+        error: error.message,
+      });
+    }
+
+    const odontologos = (usuarios || [])
+      .filter((usuario) => (usuario.roles?.nombre || '').toUpperCase() === 'ODONTOLOGO')
+      .map((usuario) => ({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: usuario.roles?.nombre || 'ODONTOLOGO',
+        foto_perfil: usuario.foto_perfil,
+        activo: usuario.activo,
+      }));
+
+    res.json({
+      code: 'DOCTORS_SUCCESS',
+      odontologos,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Error interno',
+      error: err.message,
+      code: 'SERVER_ERROR',
+    });
+  }
+};
+
 const getMobileProfile = async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, activo, creado_en')
+      .select('id, nombre, correo, activo, creado_en, foto_perfil')
       .eq('id', req.user.id)
       .single();
 
@@ -186,6 +226,7 @@ const getMobileProfile = async (req, res) => {
         rol: 'CLIENTE',
         activo: usuario.activo,
         creado_en: usuario.creado_en,
+        foto_perfil: usuario.foto_perfil,
       } 
     });
   } catch (err) {
@@ -208,7 +249,7 @@ const updateMobileProfile = async (req, res) => {
         nombre: nombre || undefined,
       })
       .eq('id', req.user.id)
-      .select('id, nombre, correo');
+      .select('id, nombre, correo, foto_perfil');
 
     if (error) {
       return res.status(500).json({ 
@@ -234,6 +275,7 @@ const updateMobileProfile = async (req, res) => {
 module.exports = {
   mobileRegister,
   mobileLogin,
+  getMobileDoctors,
   getMobileProfile,
   updateMobileProfile,
 };

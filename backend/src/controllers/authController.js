@@ -162,7 +162,7 @@ const getProfile = async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
       .eq('id', req.user.id)
       .single();
 
@@ -177,10 +177,129 @@ const getProfile = async (req, res) => {
         email: usuario.correo,
         rol: usuario.roles?.nombre,
         activo: usuario.activo,
+        foto_perfil: usuario.foto_perfil,
       } 
     });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message });
+  }
+};
+
+// Función para actualizar foto de perfil
+const updateProfilePhoto = async (req, res) => {
+  try {
+    const file = req.file;
+    const userId = req.user.id;
+
+    if (!file) {
+      return res.status(400).json({ message: 'Archivo de imagen es requerido', code: 'NO_FILE' });
+    }
+
+    // Validar que sea una imagen
+    if (!file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ message: 'Solo se permiten archivos de imagen', code: 'INVALID_FILE_TYPE' });
+    }
+
+    // Validar tamaño (máx 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ message: 'La imagen no puede exceder 5MB', code: 'FILE_TOO_LARGE' });
+    }
+
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+    const filePath = `profiles/${fileName}`;
+
+    // Crear bucket si no existe
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const profilePhotoBucket = buckets?.find(b => b.name === 'profile-photos');
+    
+    if (!profilePhotoBucket) {
+      const { error: createError } = await supabase.storage.createBucket('profile-photos', {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+      });
+      if (createError) {
+        console.error('Error creando bucket:', createError);
+        return res.status(500).json({ message: 'Error al crear bucket', code: 'BUCKET_ERROR' });
+      }
+    }
+
+    // Subir archivo
+    const { error: uploadError } = await supabase.storage
+      .from('profile-photos')
+      .upload(filePath, file.buffer, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.mimetype,
+      });
+
+    if (uploadError) {
+      console.error('Error subiendo foto:', uploadError);
+      return res.status(500).json({ message: 'Error al subir imagen', code: 'UPLOAD_ERROR', error: uploadError.message });
+    }
+
+    // Obtener URL pública
+    const { data: publicUrlData } = supabase.storage
+      .from('profile-photos')
+      .getPublicUrl(filePath);
+    const publicUrl = publicUrlData?.publicUrl;
+
+    // Actualizar URL en la BD
+    const { error: updateError } = await supabase
+      .from('usuarios')
+      .update({ foto_perfil: publicUrl })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Error actualizando usuario:', updateError);
+      return res.status(500).json({ message: 'Error al actualizar perfil', code: 'UPDATE_ERROR' });
+    }
+
+    res.json({
+      message: 'Foto de perfil actualizada exitosamente',
+      code: 'PHOTO_UPDATED',
+      foto_perfil: publicUrl,
+    });
+  } catch (err) {
+    console.error('Error en updateProfilePhoto:', err);
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Función para eliminar usuario
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'ID de usuario es requerido', code: 'MISSING_ID' });
+    }
+
+    // Eliminar de la tabla usuarios
+    const { error: deleteUserError } = await supabase
+      .from('usuarios')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteUserError) {
+      return res.status(500).json({ message: 'Error al eliminar usuario de BD', code: 'DB_DELETE_ERROR', error: deleteUserError.message });
+    }
+
+    // Eliminar de auth.users de Supabase
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+
+    if (deleteAuthError) {
+      console.warn('Usuario eliminado de BD pero hubo error al eliminarlo de auth:', deleteAuthError);
+      // No fallar aquí, el usuario ya fue eliminado de la BD
+    }
+
+    res.json({
+      message: 'Usuario eliminado exitosamente',
+      code: 'USER_DELETED',
+      userId,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
 };
 
@@ -190,4 +309,6 @@ module.exports = {
   logout,
   getProfile,
   getUsers,
+  updateProfilePhoto,
+  deleteUser,
 };

@@ -9,6 +9,7 @@ export interface User {
   activo?: boolean;
   creado_en?: string;
   ultimo_acceso?: string;
+  foto_perfil?: string;
 }
 
 export interface Patient {
