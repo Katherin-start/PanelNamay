@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const supabaseAuth = require('../config/supabaseAuth');
 const jwt = require('jsonwebtoken');
 
 // Registro para clientes móviles (rol CLIENTE automáticamente)
@@ -14,8 +15,8 @@ const mobileRegister = async (req, res) => {
   }
 
   try {
-    // Registrar en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Registrar en Supabase Auth usando cliente anónimo separado
+    const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
       email,
       password,
       options: {
@@ -91,8 +92,8 @@ const mobileLogin = async (req, res) => {
   }
 
   try {
-    // Autenticar con Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Autenticar con Supabase Auth usando cliente anónimo separado
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });

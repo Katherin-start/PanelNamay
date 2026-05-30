@@ -8,7 +8,7 @@ const initializeStorage = async (req, res) => {
     
     // Intentar obtener el bucket
     const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket(bucketName);
-    
+
     if (bucketData) {
       // El bucket ya existe
       console.log(`✅ Bucket ${bucketName} ya existe`);
@@ -19,37 +19,32 @@ const initializeStorage = async (req, res) => {
       });
     }
 
-    if (getBucketError && getBucketError.status === 404) {
-      // El bucket no existe, intentar crear
-      console.log(`📦 Creando bucket ${bucketName}...`);
-      
-      const { data: createdBucket, error: createError } = await supabase.storage.createBucket(
-        bucketName,
-        { 
-          public: true,
-          fileSizeLimit: 20 * 1024 * 1024, // 20 MB
-        }
-      );
+    // Si no existe o hubo un error, intentar crear el bucket de todas formas
+    console.log(`📦 Bucket ${bucketName} no encontrado (detalle: ${getBucketError?.message || 'sin detalle'}). Intentando crearlo...`);
 
-      if (createError) {
-        console.error(`❌ Error al crear bucket: ${createError.message}`);
-        return res.status(500).json({
-          code: 'BUCKET_CREATE_ERROR',
-          message: `Error al crear bucket: ${createError.message}`,
-          error: createError,
-        });
+    const { data: createdBucket, error: createError } = await supabase.storage.createBucket(
+      bucketName,
+      { 
+        public: true,
+        fileSizeLimit: 20 * 1024 * 1024, // 20 MB
       }
+    );
 
-      console.log(`✅ Bucket ${bucketName} creado exitosamente`);
-      return res.json({
-        code: 'BUCKET_CREATED',
-        message: `Bucket ${bucketName} creado exitosamente`,
-        bucket: createdBucket,
+    if (createError) {
+      console.error(`❌ Error al crear bucket: ${createError.message}`, createError);
+      return res.status(500).json({
+        code: 'BUCKET_CREATE_ERROR',
+        message: `Error al crear bucket: ${createError.message}`,
+        error: createError,
       });
     }
 
-    // Otro error
-    throw getBucketError || new Error('Error desconocido');
+    console.log(`✅ Bucket ${bucketName} creado exitosamente`);
+    return res.json({
+      code: 'BUCKET_CREATED',
+      message: `Bucket ${bucketName} creado exitosamente`,
+      bucket: createdBucket,
+    });
 
   } catch (err) {
     console.error('❌ Error en initializeStorage:', err);

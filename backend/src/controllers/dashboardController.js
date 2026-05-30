@@ -5,40 +5,182 @@ const formatCurrency = (value) => {
   return `$${amount.toFixed(2)}`;
 };
 
+// Normaliza nombres de rol: remueve diacríticos, espacios y pasa a mayúsculas
+const normalizeRole = (raw) => {
+  if (!raw) return '';
+  try {
+    return raw.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, '').toUpperCase();
+  } catch (e) {
+    // Fallback simple
+    return raw.toString().replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toUpperCase();
+  }
+};
+
 // 📊 DASHBOARD - Métricas y gráficos para administrador y odontólogo
 const getDashboardMetrics = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      console.error('getDashboardMetrics: req.user no está presente');
+      return res.status(401).json({ message: 'Usuario no autenticado', code: 'UNAUTHORIZED' });
+    }
+
     const currentUserId = req.user.id;
-    const isOdontologo = req.user.rol === 'ODONTOLOGO';
-    const isRecepcionista = req.user.rol === 'RECEPCIONISTA';
-    const isPracticante = req.user.rol === 'PRACTICANTE';
-    const isCajero = req.user.rol === 'CAJERO';
+    const rawRole = req.user.rol || '';
+    const userRole = normalizeRole(rawRole);
+    console.log(`[DEBUG] getDashboardMetrics invoked by userId=${currentUserId}, roleRaw=${rawRole}, roleNorm=${userRole}`);
+    const isOdontologo = userRole === 'ODONTOLOGO';
+    const isRecepcionista = userRole === 'RECEPCIONISTA';
+    const isPracticante = userRole === 'PRACTICANTE';
+    const isCajero = userRole === 'CAJERO';
     const today = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
+    const countPatientUsers = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('pacientes')
+          .select('id', { count: 'exact', head: true });
+
+        if (error) {
+          console.log('Error al contar pacientes:', error);
+          return 0;
+        }
+
+        console.log(`Total pacientes en tabla 'pacientes': ${count || 0}`);
+        return count || 0;
+      } catch (e) {
+        console.log('Error en countPatientUsers:', e.message);
+        return 0;
+      }
+    };
+
+    const normalizeCitasRows = (rows = []) => (rows || []).map((cita) => ({
+      ...cita,
+      id_paciente: cita.id_paciente ?? cita.paciente_id,
+      id_odontologo: cita.id_odontologo ?? cita.odontologo_id,
+    }));
+
+    const queryCitasForOdontologo = async (odontologoId, selectFields, applyFilters = (query) => query) => {
+      const fieldSets = [
+        {
+          select: selectFields.map((field) => field
+            .replace(/id_paciente/g, 'id_paciente')
+            .replace(/id_odontologo/g, 'id_odontologo')).join(','),
+          odontologoField: 'id_odontologo'
+        },
+        {
+          select: selectFields.map((field) => field
+            .replace(/id_paciente/g, 'paciente_id')
+            .replace(/id_odontologo/g, 'odontologo_id')).join(','),
+          odontologoField: 'odontologo_id'
+        }
+      ];
+
+      for (const attempt of fieldSets) {
+        try {
+          let query = supabase.from('citas').select(attempt.select);
+          query = query.eq(attempt.odontologoField, odontologoId);
+          query = applyFilters(query);
+
+          const { data, error } = await query;
+          if (!error) {
+            return { data: normalizeCitasRows(data || []), error: null };
+          }
+
+          console.log(`[DEBUG] queryCitasForOdontologo fallo con ${attempt.odontologoField}:`, error);
+        } catch (e) {
+          console.log(`[DEBUG] queryCitasForOdontologo excepción con ${attempt.odontologoField}:`, e.message);
+        }
+      }
+
+      return { data: [], error: null };
+    };
+
+    const countOdontologoPacientes = async (odontologoId) => {
+      try {
+        console.log(`[DEBUG] Buscando pacientes para odontólogo: ${odontologoId}`);
+        const { data: citas = [] } = await queryCitasForOdontologo(odontologoId, ['id_paciente']);
+
+        if (!citas?.length) {
+          console.log(`[DEBUG] No se encontraron citas para odontólogo ${odontologoId}, aplicando fallback a pacientes registrados`);
+          return await countAllUsuariosPacientes();
+        }
+
+        console.log(`[DEBUG] Citas encontradas: ${citas.length}`);
+        const pacientesUnicos = new Set(citas.map(c => c.id_paciente));
+        console.log(`[DEBUG] Pacientes únicos del odontólogo ${odontologoId}: ${pacientesUnicos.size}`);
+        return pacientesUnicos.size;
+      } catch (e) {
+        console.log('Error en countOdontologoPacientes:', e.message);
+        return 0;
+      }
+    };
+
+    const countAllUsuariosPacientes = async () => {
+      try {
+        const { data: usuarios = [], error } = await supabase
+          .from('usuarios')
+          .select('id, rol_id, roles:rol_id(id, nombre)');
+
+        if (error) {
+          console.log('Error al contar pacientes registrados desde usuarios:', error);
+          return 0;
+        }
+
+        const pacientes = (usuarios || []).filter((usuario) => {
+          const rolNombre = usuario.roles?.nombre || '';
+          return /paciente|cliente/i.test(rolNombre) || usuario.rol_id == null;
+        });
+
+        console.log(`[DEBUG] Pacientes registrados en usuarios: ${pacientes.length}`);
+        return pacientes.length;
+      } catch (e) {
+        console.log('Error en countAllUsuariosPacientes:', e.message);
+        return 0;
+      }
+    };
+
+    const countRecepcionistaPacientes = async () => {
+      try {
+        const countFromUsuarios = await countAllUsuariosPacientes();
+        if (countFromUsuarios > 0) {
+          console.log(`[DEBUG] Conteo de pacientes desde usuarios: ${countFromUsuarios}`);
+          return countFromUsuarios;
+        }
+
+        console.log('[DEBUG] No hay pacientes registrados en usuarios, aplicando fallback a tabla pacientes');
+        return await countPatientUsers();
+      } catch (e) {
+        console.log('Error en countRecepcionistaPacientes:', e.message);
+        return 0;
+      }
+    };
+
     if (isOdontologo) {
       // Métricas específicas para odontólogo
       const [{ data: citasHoy = [] }, { data: tratamientosEnCurso = [] }, { data: citasAtendidas = [] }, { data: alertasControl = [] }] = await Promise.all([
-        supabase.from('citas')
-          .select('id, fecha, hora, paciente_id, estado')
-          .eq('fecha', today)
-          .eq('odontologo_id', currentUserId)
-          .order('hora'),
+        (async () => {
+          const { data } = await queryCitasForOdontologo(currentUserId, ['id', 'fecha', 'hora', 'id_paciente', 'estado'], (query) =>
+            query.eq('fecha', today).order('hora')
+          );
+          return { data };
+        })(),
 
         supabase.from('tratamientos')
-          .select('id, paciente_id, nombre, estado, fecha_inicio, fecha_fin, costo_total')
-          .eq('odontologo_id', currentUserId)
+          .select('id, id_paciente, nombre, estado, fecha_inicio, fecha_fin, costo_total')
+          .eq('id_odontologo', currentUserId)
           .eq('estado', 'en_curso')
           .order('fecha_inicio', { ascending: false }),
 
-        supabase.from('citas')
-          .select('paciente_id')
-          .gte('fecha', thirtyDaysAgo.toISOString().split('T')[0])
-          .eq('odontologo_id', currentUserId)
-          .in('estado', ['completada', 'atendida']),
+        (async () => {
+          const { data } = await queryCitasForOdontologo(currentUserId, ['id_paciente'], (query) =>
+            query.gte('fecha', thirtyDaysAgo.toISOString().split('T')[0]).in('estado', ['completada', 'atendida'])
+          );
+          return { data };
+        })(),
 
         supabase.from('alertas_medicas')
           .select('id, paciente_id, tipo, titulo, descripcion, fecha_programada, prioridad, estado')
@@ -49,23 +191,35 @@ const getDashboardMetrics = async (req, res) => {
           .order('fecha_programada', { ascending: true })
       ]);
 
-      const pacientesAtendidos = new Set(citasAtendidas.map(cita => cita.paciente_id));
-      const pacientesRequierenControl = alertasControl.length;
+      const pacientesAtendidos = new Set((citasAtendidas || []).map(cita => cita.id_paciente));
+      const pacientesRequierenControl = (alertasControl || []).length;
+      
+      const pacientesEnTratamiento = new Set((tratamientosEnCurso || []).map(tratamiento => tratamiento.id_paciente));
+      let totalPacientes = pacientesEnTratamiento.size;
+      if (!totalPacientes) {
+        console.log(`[ODONTOLOGO] No se encontraron pacientes en tratamiento activo, aplicando conteo por citas para odontólogo ${currentUserId}`);
+        totalPacientes = await countOdontologoPacientes(currentUserId);
+      }
+      console.log(`[ODONTOLOGO] Resultado: ${totalPacientes} pacientes`);
+
+      console.log(`[ODONTOLOGO] Pacientes atendidos: ${pacientesAtendidos.size}, Pacientes en tratamiento activo: ${pacientesEnTratamiento.size}, Total pacientes: ${totalPacientes}`);
 
       return res.json({
         code: 'DASHBOARD_SUCCESS',
         data: {
           pacientesAtendidos: pacientesAtendidos.size,
-          citasHoy: citasHoy.length,
-          tratamientosEnCurso: tratamientosEnCurso.length,
-          citasHoyDetalle: citasHoy,
-          tratamientosEnCursoDetalle: tratamientosEnCurso,
+          totalPacientes,
+          citasHoy: (citasHoy || []).length,
+          tratamientosEnCurso: (tratamientosEnCurso || []).length,
+          citasHoyDetalle: citasHoy || [],
+          tratamientosEnCursoDetalle: tratamientosEnCurso || [],
           pacientesRequierenControl,
-          alertasControl,
+          alertasControl: alertasControl || [],
           resumen: {
             pacientesAtendidos: pacientesAtendidos.size,
-            citasHoy: citasHoy.length,
-            tratamientosEnCurso: tratamientosEnCurso.length,
+            totalPacientes,
+            citasHoy: (citasHoy || []).length,
+            tratamientosEnCurso: (tratamientosEnCurso || []).length,
             pacientesRequierenControl
           }
         }
@@ -75,18 +229,17 @@ const getDashboardMetrics = async (req, res) => {
     if (isRecepcionista) {
       const [{ data: citasHoy = [] }, { data: pacientesReg = [] }, { data: odontologos = [] }, { data: pacienteEstados = [] }] = await Promise.all([
         supabase.from('citas')
-          .select('id, fecha, hora, paciente_id, odontologo_id, estado, created_at')
+          .select('id, fecha, hora, id_paciente, id_odontologo, estado, created_at')
           .eq('fecha', today)
           .order('hora'),
 
-        supabase.from('pacientes')
-          .select('id, nombre, estado, created_at')
-          .order('created_at', { ascending: false })
+        supabase.from('usuarios')
+          .select('id, nombre, correo, activo, creado_en, rol_id, roles:rol_id(id, nombre)')
+          .order('creado_en', { ascending: false })
           .limit(20),
 
         supabase.from('usuarios')
-          .select('id, nombre, rol')
-          .in('rol', ['ODONTOLOGO'])
+          .select('id, nombre, rol_id, roles:rol_id(id, nombre)')
           .order('nombre', { ascending: true }),
 
         supabase.from('pacientes')
@@ -96,7 +249,7 @@ const getDashboardMetrics = async (req, res) => {
       const citasPorOdontologo = {};
       const odontologoIds = new Set();
       citasHoy?.forEach(cita => {
-        const odontologoId = cita.odontologo_id;
+        const odontologoId = cita.id_odontologo;
         odontologoIds.add(odontologoId);
         if (!citasPorOdontologo[odontologoId]) {
           citasPorOdontologo[odontologoId] = {
@@ -109,7 +262,8 @@ const getDashboardMetrics = async (req, res) => {
         citasPorOdontologo[odontologoId].total++;
       });
 
-      const odontologoMap = new Map((odontologos || []).map(o => [o.id, o]));
+      const odontologosFiltrados = (odontologos || []).filter(o => (o.roles?.nombre || '').toUpperCase() === 'ODONTOLOGO' || false);
+      const odontologoMap = new Map((odontologosFiltrados || []).map(o => [o.id, o]));
       const agendaPorOdontologo = Object.values(citasPorOdontologo).map(group => ({
         odontologo_id: group.odontologo_id,
         odontologo_nombre: odontologoMap.get(group.odontologo_id)?.nombre || 'Sin asignar',
@@ -123,17 +277,30 @@ const getDashboardMetrics = async (req, res) => {
         estadosPacientes[estado] = (estadosPacientes[estado] || 0) + 1;
       });
 
+      const pacientesRegistrados = (pacientesReg || []).filter((usuario) => {
+        const rolNombre = usuario.roles?.nombre || '';
+        return /paciente|cliente/i.test(rolNombre) || usuario.rol_id == null;
+      });
+      
+      console.log(`[RECEPCIONISTA] Llamando a countRecepcionistaPacientes`);
+      const totalPacientes = await countRecepcionistaPacientes();
+      console.log(`[RECEPCIONISTA] Resultado: ${totalPacientes} pacientes`);
+
+      console.log(`[RECEPCIONISTA] Pacientes cargados: ${pacientesReg.length}, Filtrados: ${pacientesRegistrados.length}, Total por contador: ${totalPacientes}`);
+
       return res.json({
         code: 'DASHBOARD_SUCCESS',
         data: {
-          citasHoy: citasHoy.length,
-          pacientesRegistradosRecientes: pacientesReg.slice(0, 20),
-          totalPacientesRegistrados: pacientesReg.length,
+          citasHoy: (citasHoy || []).length,
+          pacientesRegistradosRecientes: (pacientesRegistrados || []).slice(0, 20),
+          totalPacientes,
+          totalPacientesRegistrados: totalPacientes,
           agendaPorOdontologo,
           estadoPacientes: Object.entries(estadosPacientes).map(([estado, total]) => ({ estado, total })),
           resumen: {
-            citasHoy: citasHoy.length,
-            pacientesRegistrados: pacientesReg.length,
+            citasHoy: (citasHoy || []).length,
+            totalPacientes,
+            pacientesRegistrados: totalPacientes,
             odontologosActivos: agendaPorOdontologo.length
           }
         }
@@ -328,12 +495,12 @@ const getDashboardMetrics = async (req, res) => {
     try {
       const { data: citasOdontologo } = await supabase
         .from('citas')
-        .select('odontologo_id')
+        .select('id_odontologo')
         .gte('fecha', thirtyDaysAgo.toISOString().split('T')[0]);
 
       const rendimientoMap = {};
       citasOdontologo?.forEach(cita => {
-        const id = cita.odontologo_id;
+        const id = cita.id_odontologo;
         if (!rendimientoMap[id]) {
           rendimientoMap[id] = { nombre: `Odontólogo ${id}`, citas_atendidas: 0 };
         }
@@ -366,11 +533,29 @@ const getDashboardMetrics = async (req, res) => {
       console.log('Error en estado clínica:', e.message);
     }
 
+    let totalPacientesCount = 0;
+    try {
+      const { data: usuarios = [], error: usuariosError } = await supabase
+        .from('usuarios')
+        .select('id, rol_id, roles:rol_id(id, nombre)');
+
+      if (usuariosError) {
+        throw usuariosError;
+      }
+
+      totalPacientesCount = (usuarios || []).filter((usuario) => {
+        const rolNombre = usuario.roles?.nombre || '';
+        return /paciente|cliente/i.test(rolNombre) || usuario.rol_id == null;
+      }).length;
+    } catch (e) {
+      console.log('Error en conteo de pacientes por usuario/rol:', e.message);
+    }
+
     let citasHoy = [];
     try {
       const { data: citas } = await supabase
         .from('citas')
-        .select('hora, paciente_id, estado')
+        .select('hora, id_paciente, estado')
         .eq('fecha', today)
         .order('hora');
 
@@ -387,8 +572,9 @@ const getDashboardMetrics = async (req, res) => {
         rendimientoOdontologo,
         estadoClinica,
         citasHoy,
+        totalPacientes: totalPacientesCount,
         resumen: {
-          totalPacientes: estadoClinica.reduce((sum, item) => sum + item.total, 0),
+          totalPacientes: totalPacientesCount,
           citasHoy: citasHoy.length,
           ingresosMesActual: ingresosMensuales[new Date().toISOString().substring(0, 7)] || 0
         }
@@ -396,9 +582,11 @@ const getDashboardMetrics = async (req, res) => {
     });
   } catch (err) {
     console.error('Error general:', err);
+    console.error(err.stack);
     res.status(500).json({
       message: 'Error interno',
       error: err.message,
+      stack: err.stack,
       code: 'SERVER_ERROR'
     });
   }
@@ -409,7 +597,7 @@ const getNotifications = async (req, res) => {
   try {
     const notifications = [];
     const currentUserId = req.user.id;
-    const userRole = req.user.rol;
+    const userRole = normalizeRole(req.user.rol);
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -437,7 +625,7 @@ const getNotifications = async (req, res) => {
 
     const { data: nuevasCitas } = await supabase
       .from('citas')
-      .select('id, fecha, hora, estado, paciente_id, odontologo_id, created_at, updated_at')
+      .select('id, fecha, hora, estado, id_paciente, id_odontologo, created_at, updated_at')
       .gte('created_at', yesterday.toISOString())
       .order('created_at', { ascending: false })
       .limit(30);
@@ -455,7 +643,7 @@ const getNotifications = async (req, res) => {
 
     const { data: citasCanceladas } = await supabase
       .from('citas')
-      .select('id, fecha, hora, estado, paciente_id, odontologo_id, updated_at')
+      .select('id, fecha, hora, estado, id_paciente, id_odontologo, updated_at')
       .eq('estado', 'cancelado')
       .gte('updated_at', yesterday.toISOString())
       .order('updated_at', { ascending: false })
@@ -474,7 +662,7 @@ const getNotifications = async (req, res) => {
 
     const { data: cambiosCitas } = await supabase
       .from('citas')
-      .select('id, fecha, hora, estado, paciente_id, odontologo_id, updated_at')
+      .select('id, fecha, hora, estado, id_paciente, id_odontologo, updated_at')
       .neq('estado', 'cancelado')
       .gte('updated_at', yesterday.toISOString())
       .order('updated_at', { ascending: false })
@@ -584,20 +772,20 @@ const getNotifications = async (req, res) => {
 const getAppointmentAlerts = async (req, res) => {
   try {
     const currentUserId = req.user.id;
-    const isOdontologo = req.user.rol === 'ODONTOLOGO';
+    const isOdontologo = normalizeRole(req.user.rol) === 'ODONTOLOGO';
     const today = new Date().toISOString().split('T')[0];
 
     let citasProximas = [];
     try {
       let query = supabase
         .from('citas')
-        .select('id, fecha, hora, paciente_id, estado, odontologo_id')
+        .select('id, fecha, hora, id_paciente, estado, id_odontologo')
         .eq('fecha', today)
         .in('estado', ['programada', 'confirmada'])
         .order('hora');
 
       if (isOdontologo) {
-        query = query.eq('odontologo_id', currentUserId);
+        query = query.eq('id_odontologo', currentUserId);
       }
 
       const { data: citas } = await query;
@@ -610,14 +798,14 @@ const getAppointmentAlerts = async (req, res) => {
     try {
       let query = supabase
         .from('citas')
-        .select('id, fecha, hora, paciente_id, estado, odontologo_id')
+        .select('id, fecha, hora, id_paciente, estado, id_odontologo')
         .lt('fecha', today)
         .in('estado', ['programada', 'confirmada'])
         .order('fecha', { ascending: false })
         .limit(20);
 
       if (isOdontologo) {
-        query = query.eq('odontologo_id', currentUserId);
+        query = query.eq('id_odontologo', currentUserId);
       }
 
       const { data: citas } = await query;

@@ -64,11 +64,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Validate token on mount; fall back to stored user
   useEffect(() => {
-    if (!isLoading && !user) {
-      const token = localStorage.getItem('token');
-      if (!token) { router.push('/login'); return; }
+    if (isLoading) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      router.push('/login');
+      return;
+    }
+
+    if (!user) {
       apiClient.getProfile()
-        .then((profile) => setUser(profile.user ?? profile))
+        .then((profile) => setUser(profile.profile ?? profile.user ?? profile))
         .catch(() => { setUser(null); router.push('/login'); });
     }
   }, [isLoading, user, router, setUser]);

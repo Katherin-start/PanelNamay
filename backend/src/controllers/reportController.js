@@ -109,7 +109,7 @@ const generateAppointmentsReport = async (req, res) => {
 
     const { data: citas, error } = await supabase
       .from('citas')
-      .select('fecha, hora, estado, paciente_id, odontologo_id, notas, usuarios:paciente_id(nombre), usuarios:odontologo_id(nombre)')
+      .select('fecha, hora, estado, id_paciente, id_odontologo, notas, usuarios:id_paciente(nombre), usuarios:id_odontologo(nombre)')
       .gte('fecha', start)
       .lte('fecha', end)
       .order('fecha', { ascending: false });
@@ -147,8 +147,8 @@ const generateAppointmentsReport = async (req, res) => {
     doc.fontSize(10);
     citas?.forEach((cita, index) => {
       doc.text(`${index + 1}. ${cita.fecha} ${cita.hora}`);
-      doc.text(`   Paciente: ${cita['usuarios:paciente_id']?.nombre || 'N/A'}`);
-      doc.text(`   Odontólogo: ${cita['usuarios:odontologo_id']?.nombre || 'N/A'}`);
+      doc.text(`   Paciente: ${cita['usuarios:id_paciente']?.nombre || 'N/A'}`);
+      doc.text(`   Odontólogo: ${cita['usuarios:id_odontologo']?.nombre || 'N/A'}`);
       doc.text(`   Estado: ${cita.estado} | Notas: ${cita.notas || 'Sin notas'}`);
       doc.moveDown();
     });
@@ -279,7 +279,7 @@ const generateTodayAppointmentsReport = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const { data: citas, error } = await supabase
       .from('citas')
-      .select('fecha, hora, estado, paciente_id, odontologo_id, notas, usuarios:paciente_id(nombre), usuarios:odontologo_id(nombre)')
+      .select('fecha, hora, estado, id_paciente, id_odontologo, notas, usuarios:id_paciente(nombre), usuarios:id_odontologo(nombre)')
       .eq('fecha', today)
       .order('hora', { ascending: true });
 
@@ -307,8 +307,8 @@ const generateTodayAppointmentsReport = async (req, res) => {
 
     doc.fontSize(10);
     citas.forEach((cita, index) => {
-      doc.text(`${index + 1}. ${cita.hora} - Paciente: ${cita['usuarios:paciente_id']?.nombre || 'N/A'}`);
-      doc.text(`   Odontólogo: ${cita['usuarios:odontologo_id']?.nombre || 'N/A'}`);
+      doc.text(`${index + 1}. ${cita.hora} - Paciente: ${cita['usuarios:id_paciente']?.nombre || 'N/A'}`);
+      doc.text(`   Odontólogo: ${cita['usuarios:id_odontologo']?.nombre || 'N/A'}`);
       doc.text(`   Estado: ${cita.estado}`);
       doc.text(`   Notas: ${cita.notas || 'Sin notas'}`);
       doc.moveDown();

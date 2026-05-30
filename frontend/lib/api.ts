@@ -1,5 +1,17 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+const isJwtExpired = (token: string) => {
+  try {
+    const payload = token.split('.')[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map((c) => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`).join(''));
+    const parsed = JSON.parse(json);
+    return typeof parsed.exp === 'number' && Date.now() / 1000 > parsed.exp;
+  } catch {
+    return false;
+  }
+};
+
 class ApiClient {
   private baseURL: string;
 
@@ -7,9 +19,22 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
+  private getToken() {
+    if (typeof window === 'undefined') return null;
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    if (isJwtExpired(token)) {
+      console.warn('[API] JWT expirado, limpiando credenciales');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return null;
+    }
+    return token;
+  }
+
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = this.getToken();
     const isFormData = options.body instanceof FormData;
 
     const config: RequestInit = {
@@ -21,10 +46,38 @@ class ApiClient {
       },
     };
 
-    const response = await fetch(url, config);
+    // Debug: mostrar token y headers usados en la petición (temporal)
+    try {
+      // Solo en entorno cliente
+      if (typeof window !== 'undefined') {
+        console.debug('[API] request', { url, token: token ? `${token.slice(0, 8)}...` : null, headers: config.headers });
+      }
+    } catch (e) {}
+
+    let response: Response;
+    try {
+      response = await fetch(url, config);
+    } catch (err) {
+      console.error('[API] Network error fetching', url, err);
+      throw err;
+    }
 
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ message: 'Error desconocido' }));
+      const text = await response.text().catch(() => '');
+      let body: any = {};
+      try {
+        body = text ? JSON.parse(text) : { message: 'Error desconocido' };
+      } catch (e) {
+        body = { message: text || 'Error desconocido' };
+      }
+
+      if (response.status === 401 && typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        console.warn('[API] 401 recibido, auth limpia y se requiere login');
+      }
+
+      console.error('[API] Response error', { url, status: response.status, body, headers: config.headers });
       throw new Error(body.message || body.error || `HTTP ${response.status}`);
     }
 

@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const supabaseAuth = require('../config/supabaseAuth');
 const jwt = require('jsonwebtoken');
 
 // Función para login - válido para todos los roles (web y API móvil)
@@ -6,8 +7,8 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Autenticar con Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Autenticar con Supabase Auth usando cliente anónimo separado
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });
@@ -121,10 +122,7 @@ const register = async (req, res) => {
 // Función para logout
 const logout = async (req, res) => {
   try {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      return res.status(500).json({ message: 'Error al cerrar sesión', error: error.message });
-    }
+    const { error } = await supabaseAuth.auth.signOut();
     res.json({ message: 'Sesión cerrada exitosamente' });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message });

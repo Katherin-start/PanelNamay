@@ -6,17 +6,17 @@ const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Supabase URL o SERVICE ROLE KEY no está configurado. Verifica .env en backend/');
+if (!supabaseUrl || !anonKey) {
+  throw new Error('Supabase URL or anon key no está configurado. Verifica .env en backend/');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
+const supabaseAuth = createClient(supabaseUrl, anonKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
   },
 });
 
-module.exports = supabase;
+module.exports = supabaseAuth;

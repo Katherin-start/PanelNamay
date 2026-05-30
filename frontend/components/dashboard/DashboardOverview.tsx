@@ -72,7 +72,7 @@ function AdminDashboard({ metrics, alerts }: { metrics: DashboardMetrics | null;
     <div className="space-y-6">
       <DashHeader title="Dashboard Administrativo" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Pacientes" value={metrics?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="+12.5% del mes pasado" />
+        <StatCard label="Total Pacientes" value={metrics?.totalPacientes ?? metrics?.resumen?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="+12.5% del mes pasado" />
         <StatCard label="Citas Pendientes" value={metrics?.citasPendientes ?? 0} icon={CalendarIcon} color="#457B9D" light="#EFF6FF" sub="Programadas para hoy" />
         <StatCard label="Ingresos del Mes" value={`S/ ${(metrics?.ingresosTotales ?? 0).toFixed(2)}`} icon={CurrencyDollarIcon} color="#16a34a" light="#F0FDF4" sub="+8.2% este mes" />
         <StatCard label="Citas Completadas" value={metrics?.citasCompletadas ?? 0} icon={CheckCircleIcon} color="#E63946" light="#FFF5F5" sub="Este mes" />
@@ -101,12 +101,16 @@ function AdminDashboard({ metrics, alerts }: { metrics: DashboardMetrics | null;
 
 function OdontologoDashboard({ metrics, appointments, alerts }: { metrics: DashboardMetrics | null; appointments: any[]; alerts: any[] }) {
   const today = new Date().toDateString();
-  const todayCitas = appointments.filter((a) => new Date(a.fecha_hora).toDateString() === today);
+  const appointmentsWithDate = appointments.map((a) => ({
+    ...a,
+    fecha_hora: a.fecha_hora ?? (a.fecha ? `${a.fecha}T${a.hora ?? '00:00'}` : undefined),
+  }));
+  const todayCitas = appointmentsWithDate.filter((a) => a.fecha_hora && new Date(a.fecha_hora).toDateString() === today);
   return (
     <div className="space-y-6">
       <DashHeader title="Panel del Odontólogo" subtitle="Resumen de tu actividad clínica de hoy" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Mis Pacientes" value={metrics?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="En tratamiento activo" />
+        <StatCard label="Mis Pacientes" value={metrics?.totalPacientes ?? metrics?.resumen?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="En tratamiento activo" />
         <StatCard label="Citas Hoy" value={todayCitas.length} icon={CalendarIcon} color="#457B9D" light="#EFF6FF" sub="Programadas para hoy" />
         <StatCard label="Citas Completadas" value={metrics?.citasCompletadas ?? 0} icon={CheckCircleIcon} color="#16a34a" light="#F0FDF4" sub="Este mes" />
       </div>
@@ -219,7 +223,7 @@ function RecepcionistaDashboard({ metrics, appointments, alerts }: { metrics: Da
       <DashHeader title="Panel de Recepción" subtitle="Agenda y pacientes del día" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Citas Hoy" value={todayCitas.length} icon={CalendarIcon} color="#457B9D" light="#EFF6FF" sub="Agendadas para hoy" />
-        <StatCard label="Pacientes Registrados" value={metrics?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="Total en el sistema" />
+        <StatCard label="Pacientes Registrados" value={metrics?.totalPacientes ?? metrics?.resumen?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="Total en el sistema" />
         <StatCard label="Citas Pendientes" value={pendientes} icon={ClockIcon} color="#F59E0B" light="#FFFBEB" sub="Sin confirmar" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -407,7 +411,7 @@ export default function DashboardOverview() {
           apiClient.getDashboardMetrics().catch(() => null),
           apiClient.getAppointmentAlerts().catch(() => []),
         ]);
-        setMetrics(m);
+        setMetrics(m?.data ?? m);
         setAlerts(Array.isArray(a) ? a : []);
 
         // Role-specific data

@@ -41,7 +41,7 @@ export default function ChatPage() {
           apiClient.getUsers().catch(() => []),
         ])) as [any, any, any];
 
-        const currentUserId = profileRes?.profile?.id ?? '';
+        const currentUserId = profileRes?.profile?.id ?? profileRes?.user?.id ?? profileRes?.id ?? '';
         setCurrentUserId(currentUserId);
 
         const chatContacts = Array.isArray(chatResult)
