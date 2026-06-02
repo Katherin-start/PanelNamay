@@ -9,7 +9,7 @@ const getPatients = async (req, res) => {
 
     let query = supabase
       .from('pacientes')
-      .select('id, nombre, dni, telefono, estado, created_at', { count: 'exact' })
+      .select('id, nombre, dni, telefono, estado, created_at, foto_perfil', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -93,6 +93,36 @@ const updatePatientState = async (req, res) => {
     res.json({
       code: 'PATIENT_STATE_UPDATED',
       patient
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// ❌ ELIMINAR PACIENTE
+const deletePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: 'El ID del paciente es requerido', code: 'REQUIRED_FIELD' });
+    }
+
+    const { data: deletedPatient, error } = await supabase
+      .from('pacientes')
+      .delete()
+      .eq('id', id)
+      .select('id, nombre')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al eliminar paciente', code: 'DELETE_ERROR', error: error.message });
+    }
+
+    res.json({
+      code: 'PATIENT_DELETED',
+      message: `Paciente ${deletedPatient?.nombre || 'sin nombre'} eliminado correctamente`,
+      patientId: id
     });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
@@ -373,6 +403,7 @@ module.exports = {
   getPatients,
   createPatient,
   updatePatientState,
+  deletePatient,
   getTreatments,
   createTreatment,
   updateTreatment,

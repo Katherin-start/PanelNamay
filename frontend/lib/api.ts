@@ -143,6 +143,7 @@ class ApiClient {
       direccion:  p.direccion  ?? '',
       creado_en:  p.creado_en  ?? p.created_at  ?? '',
       estado:     p.estado     ?? 'activo',
+      foto_perfil: p.foto_perfil ?? null,
     };
   }
 
@@ -182,6 +183,12 @@ class ApiClient {
     return this.request(`/patients/${id}/state`, {
       method: 'PUT',
       body: JSON.stringify({ estado: state }),
+    });
+  }
+
+  async deletePatient(id: string) {
+    return this.request(`/patients/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -475,6 +482,9 @@ class ApiClient {
       id: u.id,
       nombre: u.nombre ?? '',
       email: u.email ?? u.correo ?? '',
+      dni: u.dni ?? '',
+      telefono: u.telefono ?? u.phone ?? '',
+      foto_perfil: u.foto_perfil ?? u.foto ?? u.photo ?? u.profile_photo ?? null,
       rol: u.rol ?? u.roles?.nombre ?? this.rolIdToName(u.rol_id) ?? '',
       activo: u.activo ?? (u.estado === 'activo'),
       estado: u.estado ?? (u.activo ? 'activo' : 'inactivo'),

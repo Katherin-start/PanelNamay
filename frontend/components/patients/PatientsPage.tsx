@@ -10,8 +10,10 @@ import {
   ClockIcon,
   FunnelIcon,
   XMarkIcon,
+  EnvelopeIcon,
   PhoneIcon,
   IdentificationIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
@@ -36,6 +38,8 @@ export default function PatientsPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showNewAppt, setShowNewAppt]         = useState(false);
   const [apptPatient, setApptPatient]         = useState<Patient | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [deletingPatient, setDeletingPatient] = useState(false);
 
   useEffect(() => {
     const fetchPatientUsers = async () => {
@@ -49,10 +53,12 @@ export default function PatientsPage() {
             patientUsers.map((u: User) => ({
               id: u.id,
               nombre: u.nombre,
-              telefono: u.email ?? '',
-              dni: '',
+              email: u.email ?? '',
+              dni: u.dni ?? '',
+              telefono: u.telefono ?? '',
               creado_en: u.creado_en ?? new Date().toISOString(),
               estado: u.activo ? 'activo' : 'inactivo',
+              foto_perfil: u.foto_perfil,
             }))
           );
           return;
@@ -80,6 +86,18 @@ export default function PatientsPage() {
     } catch (err: any) {
       setFormError(err.message ?? 'Error al guardar el paciente.');
     } finally { setSaving(false); }
+  };
+
+  const handleDeletePatient = async () => {
+    if (!patientToDelete?.id) return;
+    setDeletingPatient(true);
+    try {
+      await apiClient.deletePatient(patientToDelete.id);
+      setPatients((prev) => prev.filter((p) => p.id !== patientToDelete.id));
+      setPatientToDelete(null);
+    } catch (err: any) {
+      alert(`Error al eliminar paciente: ${err.message ?? 'Error desconocido'}`);
+    } finally { setDeletingPatient(false); }
   };
 
   const filtered = patients.filter(
@@ -202,7 +220,7 @@ export default function PatientsPage() {
             <thead>
               <tr style={{ backgroundColor: '#F1F4F9' }}>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Paciente</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Teléfono</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Correo Electrónico</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Registro</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Estado</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Acciones</th>
@@ -222,12 +240,20 @@ export default function PatientsPage() {
                     <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                            style={{ backgroundColor: '#457B9D' }}
-                          >
-                            {initials(patient.nombre)}
-                          </div>
+                          {patient.foto_perfil ? (
+                            <img
+                              src={patient.foto_perfil}
+                              alt={patient.nombre}
+                              className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                              style={{ backgroundColor: '#457B9D' }}
+                            >
+                              {initials(patient.nombre)}
+                            </div>
+                          )}
                           <div>
                             <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
                               {patient.nombre}
@@ -238,8 +264,8 @@ export default function PatientsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <PhoneIcon className="h-3.5 w-3.5 text-gray-400" />
-                          {patient.telefono || '—'}
+                          <EnvelopeIcon className="h-3.5 w-3.5 text-gray-400" />
+                          {patient.email || '—'}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -273,6 +299,14 @@ export default function PatientsPage() {
                             style={{ color: '#457B9D', borderColor: '#457B9D' }}
                           >
                             + Cita
+                          </button>
+                          <button
+                            onClick={() => setPatientToDelete(patient)}
+                            className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-90 flex items-center gap-1"
+                            style={{ backgroundColor: '#E63946' }}
+                          >
+                            <TrashIcon className="h-3.5 w-3.5" />
+                            Eliminar
                           </button>
                         </div>
                       </td>
@@ -486,6 +520,52 @@ export default function PatientsPage() {
                 className="w-full px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Delete Patient */}
+      {patientToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(29,53,87,0.55)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#E63946' }}>
+                  <TrashIcon className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-lg font-bold" style={{ color: '#1D3557' }}>Eliminar Paciente</h2>
+              </div>
+              <button onClick={() => setPatientToDelete(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <XMarkIcon className="h-5 w-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="p-4 rounded-lg text-center" style={{ backgroundColor: '#FEE2E2' }}>
+                <p className="text-sm font-semibold text-gray-800">
+                  ¿Está seguro de que desea eliminar a <strong>{patientToDelete.nombre}</strong>?
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                  Esta acción no se puede deshacer. Se eliminará todo el registro del paciente.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPatientToDelete(null)}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeletePatient}
+                  disabled={deletingPatient}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: '#E63946' }}
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  {deletingPatient ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

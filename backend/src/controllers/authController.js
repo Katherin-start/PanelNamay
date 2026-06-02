@@ -135,7 +135,7 @@ const getUsers = async (req, res) => {
   try {
     const { data: usuarios, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, creado_en, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, dni, rol_id, activo, creado_en, foto_perfil, roles:rol_id(id, nombre)')
       .order('creado_en', { ascending: false });
 
     if (error) {
@@ -146,10 +146,12 @@ const getUsers = async (req, res) => {
       id: u.id,
       nombre: u.nombre,
       email: u.correo,
+      dni: u.dni ?? '',
       rol: u.roles?.nombre || 'PRACTICANTE',
       rol_id: u.rol_id,
       activo: u.activo,
       creado_en: u.creado_en,
+      foto_perfil: u.foto_perfil ?? null,
     }));
 
     res.json({ users });

@@ -194,12 +194,20 @@ export default function UsersPage() {
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                            style={{ backgroundColor: '#1D3557' }}
-                          >
-                            {(user.nombre ?? '?').charAt(0).toUpperCase()}
-                          </div>
+                          {user.foto_perfil ? (
+                            <img
+                              src={user.foto_perfil}
+                              alt={user.nombre ?? 'Foto de usuario'}
+                              className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                              style={{ backgroundColor: '#1D3557' }}
+                            >
+                              {(user.nombre ?? '?').charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <p className="font-medium" style={{ color: '#1D3557' }}>
                               {user.nombre ?? 'Sin nombre'}

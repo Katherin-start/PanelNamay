@@ -4,6 +4,8 @@ export interface User {
   id: string;
   nombre: string;
   email: string;
+  dni?: string;
+  telefono?: string;
   rol: string;
   estado?: 'activo' | 'inactivo';
   activo?: boolean;
@@ -22,6 +24,7 @@ export interface Patient {
   direccion?: string;
   estado: 'activo' | 'inactivo';
   creado_en: string;
+  foto_perfil?: string;
 }
 
 export interface Appointment {

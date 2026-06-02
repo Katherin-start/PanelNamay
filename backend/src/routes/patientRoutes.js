@@ -4,6 +4,7 @@ const {
   getPatients,
   createPatient,
   updatePatientState,
+  deletePatient,
   getTreatments,
   createTreatment,
   updateTreatment,
@@ -21,6 +22,7 @@ router.use(authMiddleware);
 router.get('/', roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA']), getPatients);
 router.post('/', roleMiddleware(['ADMINISTRADOR', 'RECEPCIONISTA']), createPatient);
 router.put('/:id/state', roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO']), updatePatientState);
+router.delete('/:id', roleMiddleware(['ADMINISTRADOR']), deletePatient);
 
 // 🩺 RUTAS DE TRATAMIENTOS
 router.get('/treatments', roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA']), getTreatments);
