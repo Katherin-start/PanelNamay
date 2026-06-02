@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import CreateDiscountForm from './CreateDiscountForm';
 
 export default function AdminRequests() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -115,7 +117,7 @@ export default function AdminRequests() {
               Revisa y administra solicitudes pendientes, aprobadas y rechazadas
             </p>
           </div>
-          <button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition shadow-sm flex items-center justify-center gap-2">
+          <button onClick={() => setShowCreateModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition shadow-sm flex items-center justify-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -123,6 +125,24 @@ export default function AdminRequests() {
             Nueva solicitud
           </button>
         </div>
+
+        {/* Modal: Crear solicitud (azul) */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowCreateModal(false)} />
+            <div className="relative w-full max-w-2xl mx-4">
+              <div className="rounded-2xl overflow-hidden shadow-lg">
+                <div className="bg-indigo-600 px-6 py-4 flex items-center justify-between">
+                  <h3 className="text-white font-semibold">Nueva solicitud de descuento</h3>
+                  <button className="text-white/90 hover:text-white" onClick={() => setShowCreateModal(false)}>✕</button>
+                </div>
+                <div className="bg-white p-6">
+                  <CreateDiscountForm onSuccess={() => { setShowCreateModal(false); fetchRequests(); }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {allRequests.length === 0 ? (
           <div className="text-center text-slate-500 py-16 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">

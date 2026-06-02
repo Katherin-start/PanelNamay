@@ -93,9 +93,10 @@ const createDiscount = async (req, res) => {
       solicitado_en: ahora,
     };
 
-    if (normalizedEstado === 'aprobado') {
+    if (normalizedEstado === 'aprobado' && req.user?.rol !== 'RECEPCIONISTA') {
       payload.aprobado_por = req.user.id;
       payload.aprobado_en = ahora;
+      payload.visible = true;
     }
 
     // Debug logging: show who is creating and payload
@@ -212,12 +213,14 @@ const approveDiscount = async (req, res) => {
     }
 
     const estado = normalizedAction;
-    const activo = normalizedAction === 'aprobado';
+    const isApproved = normalizedAction === 'aprobado';
+    const activo = isApproved;
+    const visible = isApproved;
     const ahora = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('descuentos')
-      .update({ estado, activo, aprobado_por: req.user.id, aprobado_en: ahora })
+      .update({ estado, activo, visible, aprobado_por: req.user.id, aprobado_en: ahora })
       .eq('id', id)
       .select('*')
       .single();

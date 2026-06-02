@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { apiClient } from '@/lib/api';
 
-export default function CreateDiscountForm() {
+type Props = {
+  className?: string;
+  onSuccess?: () => void;
+};
+
+export default function CreateDiscountForm({ className, onSuccess }: Props) {
   const [form, setForm] = useState({
     nombre: '',
     descripcion: '',
@@ -53,8 +58,19 @@ export default function CreateDiscountForm() {
   };
 
   return (
-    <div className="max-w-xl bg-white p-6 rounded-lg shadow">
+    <div className={className ?? 'max-w-xl bg-white p-6 rounded-lg shadow'}>
       <h3 className="text-lg font-semibold mb-4">Crear solicitud de descuento</h3>
+      {/* Aplica a movido arriba y estilizado */}
+      <div className="mb-3">
+        <label className="block text-xs font-semibold text-slate-600 uppercase">Aplica a</label>
+        <input
+          name="aplica_a"
+          value={form.aplica_a}
+          onChange={handleChange}
+          className="mt-1 block w-full border rounded px-3 py-2 bg-blue-50 text-sm uppercase"
+        />
+        <p className="text-xs text-gray-500 mt-1">Escribe 'TODOS' o lista roles separados por coma (EJ: CAJERO)</p>
+      </div>
       {message && <div className="mb-3 text-sm text-gray-700">{message}</div>}
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
@@ -88,11 +104,7 @@ export default function CreateDiscountForm() {
             <input name="fecha_fin" type="date" value={form.fecha_fin} onChange={handleChange} className="mt-1 block w-full border rounded px-3 py-2" />
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Aplica a</label>
-          <input name="aplica_a" value={form.aplica_a} onChange={handleChange} className="mt-1 block w-full border rounded px-3 py-2" />
-          <p className="text-xs text-gray-500 mt-1">Escribe 'TODOS' o lista roles separados por coma (EJ: CAJERO)</p>
-        </div>
+        {/* 'Aplica a' moved above */}
         <div className="flex justify-end">
           <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">
             {loading ? 'Enviando...' : 'Enviar solicitud'}
