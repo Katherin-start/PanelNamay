@@ -240,6 +240,13 @@ class ApiClient {
       fecha:           p.fecha           ?? p.fecha_pago ?? '',
       monto:           Number(p.monto) || 0,
       servicio:        p.servicio        ?? p.descripcion ?? 'Pago registrado',
+      descripcion:     p.descripcion ?? p.servicio ?? '',
+      descuento_id:    p.descuento_id ?? p.discount_id ?? null,
+      descuento_nombre:p.descuento_nombre ?? p.discount_name ?? '',
+      descuento_tipo:  p.descuento_tipo ?? p.discount_tipo ?? '',
+      descuento_valor: Number(p.descuento_valor) || Number(p.discount_value) || 0,
+      monto_descuento: Number(p.monto_descuento) || Number(p.discount_amount) || 0,
+      monto_final:     Number(p.monto_final) || Number(p.total) || Number(p.monto) || 0,
     };
   }
 
@@ -257,12 +264,53 @@ class ApiClient {
         metodo_pago: payment.metodo_pago ?? payment.metodo,
         estado: payment.estado,
         fecha: payment.fecha ?? payment.fecha_pago,
+        descuento_id: payment.descuento_id,
+        servicio: payment.servicio,
+        descripcion: payment.descripcion,
       }),
     });
     return this.normalizePayment(res?.payment ?? res?.data ?? res);
   }
 
   // Reports endpoints
+  async getDiscounts() {
+    const res = await this.request('/discounts');
+    const arr: any[] = Array.isArray(res) ? res : (res?.data ?? res?.discounts ?? []);
+    return arr.map((d: any) => ({
+      id: d.id,
+      nombre: d.nombre,
+      descripcion: d.descripcion,
+      tipo: d.tipo,
+      valor: Number(d.valor) || 0,
+      fecha_inicio: d.fecha_inicio,
+      fecha_fin: d.fecha_fin,
+      aplica_a: d.aplica_a,
+      estado: d.estado,
+      activo: d.activo,
+      creado_por: d.creado_por ?? d.created_by ?? null,
+      creado_en: d.creado_en ?? d.solicitado_en ?? d.created_at ?? null,
+      aprobado_por: d.aprobado_por ?? null,
+      aprobado_en: d.aprobado_en ?? null,
+      visible: d.visible ?? false,
+    }));
+  }
+
+  async createDiscount(payload: any) {
+    const res = await this.request('/discounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res?.discount ?? res?.data ?? res;
+  }
+
+  async approveDiscount(id: string, accion: 'aprobado' | 'rechazado') {
+    const res = await this.request(`/discounts/${id}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ accion }),
+    });
+    return res?.discount ?? res?.data ?? res;
+  }
+
   async getReports() {
     return this.request('/reports');
   }

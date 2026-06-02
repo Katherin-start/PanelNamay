@@ -46,6 +46,13 @@ export interface Payment {
   estado: 'pendiente' | 'completado' | 'pagado' | 'fallido' | 'cancelado' | string;
   fecha: string;
   servicio?: string;
+  descripcion?: string;
+  descuento_id?: string;
+  descuento_nombre?: string;
+  descuento_tipo?: 'porcentaje' | 'monto' | string;
+  descuento_valor?: number;
+  monto_descuento?: number;
+  monto_final?: number;
   comprobante?: string;
   estado_validacion?: string;
 }

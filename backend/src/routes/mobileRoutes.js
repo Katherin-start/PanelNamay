@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto } = require('../controllers/mobileController');
+const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts } = require('../controllers/mobileController');
 const mobileAuthMiddleware = require('../middleware/mobileAuthMiddleware');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -16,5 +16,6 @@ router.get('/odontologos', mobileAuthMiddleware, getMobileDoctors);    // Listar
 router.get('/profile', mobileAuthMiddleware, getMobileProfile);        // Obtener perfil
 router.put('/profile', mobileAuthMiddleware, updateMobileProfile);     // Actualizar perfil
 router.post('/profile/photo', mobileAuthMiddleware, upload.single('foto'), uploadMobileProfilePhoto); // Subir foto de perfil
+router.get('/discounts', mobileAuthMiddleware, getMobileDiscounts);    // Listar descuentos autorizados y vigentes
 
 module.exports = router;

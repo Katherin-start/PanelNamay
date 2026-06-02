@@ -14,6 +14,7 @@ const appointmentRoutes = require('./routes/appointmentRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const discountRoutes = require('./routes/discountRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const setupRoutes = require('./routes/setupRoutes');
 // const alertRoutes = require('./routes/alertRoutes');
@@ -35,6 +36,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/discounts', discountRoutes);
 app.use('/api/reports', reportRoutes);
 // app.use('/api/alerts', alertRoutes);
 

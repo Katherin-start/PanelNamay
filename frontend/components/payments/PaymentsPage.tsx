@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { Payment } from '@/types';
 import { apiClient } from '@/lib/api';
 import {
@@ -31,13 +32,15 @@ const methodLabels: Record<string, string> = {
 };
 
 export default function PaymentsPage() {
+  const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [discounts, setDiscounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
-  const [payForm, setPayForm] = useState({ monto: '', descripcion: '', metodo: 'efectivo', fecha_pago: '', estado: 'completado' });
+  const [payForm, setPayForm] = useState({ monto: '', descripcion: '', metodo: 'efectivo', fecha_pago: '', estado: 'completado', descuento_id: '' });
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -53,6 +56,18 @@ export default function PaymentsPage() {
     fetchPayments();
   }, []);
 
+  useEffect(() => {
+    const fetchDiscounts = async () => {
+      try {
+        const data = await apiClient.getDiscounts();
+        setDiscounts(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.warn('No se pudieron cargar los descuentos:', error);
+      }
+    };
+    fetchDiscounts();
+  }, []);
+
   const filtered = payments.filter(
     (p) =>
       p.paciente_nombre?.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,17 +75,31 @@ export default function PaymentsPage() {
       p.metodo_pago?.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const canApplyDiscount = ['ADMINISTRADOR', 'CAJERO'].includes(user?.rol ?? '');
+  const selectedDiscount = discounts.find((d) => d.id === payForm.descuento_id);
+  const baseAmount = Number(payForm.monto) || 0;
+  const discountAmount = selectedDiscount
+    ? selectedDiscount.tipo === 'porcentaje'
+      ? Math.min(baseAmount * (selectedDiscount.valor / 100), baseAmount)
+      : Math.min(Number(selectedDiscount.valor) || 0, baseAmount)
+    : 0;
+  const finalAmount = Number((baseAmount - discountAmount).toFixed(2));
+
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payForm.monto) { setFormError('El monto es obligatorio.'); return; }
     setSaving(true);
     setFormError('');
     try {
-      await apiClient.createPayment({ ...payForm, monto: parseFloat(payForm.monto) });
+      await apiClient.createPayment({
+        ...payForm,
+        monto: parseFloat(payForm.monto),
+        monto_final: finalAmount,
+      });
       const fresh = await apiClient.getPayments();
       setPayments(Array.isArray(fresh) ? fresh : []);
       setShowNew(false);
-      setPayForm({ monto: '', descripcion: '', metodo: 'efectivo', fecha_pago: '', estado: 'completado' });
+      setPayForm({ monto: '', descripcion: '', metodo: 'efectivo', fecha_pago: '', estado: 'completado', descuento_id: '' });
     } catch (err: any) {
       setFormError(err.message ?? 'Error al registrar el pago.');
     } finally {
@@ -88,10 +117,10 @@ export default function PaymentsPage() {
 
   const totalIngresos = payments
     .filter((p) => ['completado', 'pagado'].includes((p.estado || '').toLowerCase()))
-    .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+    .reduce((acc, p) => acc + (Number(p.monto_final ?? p.monto) || 0), 0);
   const totalPendiente = payments
     .filter((p) => p.estado === 'pendiente')
-    .reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+    .reduce((acc, p) => acc + (Number(p.monto_final ?? p.monto) || 0), 0);
 
   return (
     <>
@@ -168,6 +197,8 @@ export default function PaymentsPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Paciente</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Servicio</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Monto</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Descuento</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Total</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Método</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Fecha</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Estado</th>
@@ -204,6 +235,16 @@ export default function PaymentsPage() {
                         <span className="text-sm font-bold" style={{ color: '#1D3557' }}>
                           S/ {payment.monto.toFixed(2)}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {payment.descuento_nombre ? (
+                          `${payment.descuento_nombre} (${payment.descuento_tipo === 'porcentaje' ? `-${payment.descuento_valor}%` : `-S/ ${Number(payment.descuento_valor).toFixed(2)}`})`
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                        S/ {(Number(payment.monto_final ?? payment.monto) || 0).toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {methodLabels[payment.metodo_pago] || payment.metodo_pago}
@@ -310,6 +351,32 @@ export default function PaymentsPage() {
                   placeholder="Ej: Limpieza dental, Ortodoncia..."
                 />
               </div>
+              {canApplyDiscount && payForm.descuento_id && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="text-xs font-semibold text-blue-700">Descuento aplicado</p>
+                  <p className="text-sm text-blue-900 mt-1">
+                    {selectedDiscount?.nombre} - {selectedDiscount?.tipo === 'porcentaje' ? `-${selectedDiscount?.valor}%` : `-S/ ${selectedDiscount?.valor?.toFixed(2)}`}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">Total después de descuento: S/ {finalAmount.toFixed(2)}</p>
+                </div>
+              )}
+              {canApplyDiscount && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Descuento autorizado</label>
+                  <select
+                    value={payForm.descuento_id}
+                    onChange={(e) => setPayForm((p) => ({ ...p, descuento_id: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] bg-white"
+                  >
+                    <option value="">Sin descuento</option>
+                    {discounts.map((discount) => (
+                      <option key={discount.id} value={discount.id}>
+                        {discount.nombre} - {discount.tipo === 'porcentaje' ? `${discount.valor}%` : `S/ ${discount.valor.toFixed(2)}`} ({discount.fecha_inicio} → {discount.fecha_fin})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Método de Pago</label>

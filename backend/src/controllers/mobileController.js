@@ -401,6 +401,45 @@ const uploadMobileProfilePhoto = async (req, res) => {
   }
 };
 
+const getMobileDiscounts = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('descuentos')
+      .select('*')
+      .eq('estado', 'aprobado')
+      .eq('activo', true)
+      .eq('visible', true)
+      .lte('fecha_inicio', today)
+      .gte('fecha_fin', today)
+      .order('fecha_inicio', { ascending: true });
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al obtener descuentos móviles', error: error.message, code: 'MOBILE_DISCOUNTS_ERROR' });
+    }
+
+    const discounts = Array.isArray(data)
+      ? data.map((discount) => ({
+          id: discount.id,
+          nombre: discount.nombre,
+          descripcion: discount.descripcion,
+          tipo: discount.tipo,
+          valor: Number(discount.valor) || 0,
+          fecha_inicio: discount.fecha_inicio,
+          fecha_fin: discount.fecha_fin,
+          aplica_a: discount.aplica_a,
+          estado: discount.estado,
+          activo: discount.activo,
+          visible: discount.visible,
+        }))
+      : [];
+
+    res.json({ code: 'MOBILE_DISCOUNTS_SUCCESS', discounts });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 module.exports = {
   mobileRegister,
   mobileLogin,
@@ -408,4 +447,5 @@ module.exports = {
   getMobileProfile,
   updateMobileProfile,
   uploadMobileProfilePhoto,
+  getMobileDiscounts,
 };

@@ -12,18 +12,72 @@ const formatCurrency = (value) => {
 
 const createPayment = async (req, res) => {
   try {
-    const { monto, metodo_pago, metodo, estado = 'pagado', fecha, fecha_pago } = req.body;
+    const {
+      monto,
+      metodo_pago,
+      metodo,
+      estado = 'pagado',
+      fecha,
+      fecha_pago,
+      descuento_id,
+      servicio,
+      descripcion,
+    } = req.body;
 
     if (!monto) {
       return res.status(400).json({ message: 'El monto es requerido', code: 'MISSING_FIELDS' });
     }
 
+    const normalizedMonto = normalizeAmount(monto);
+    let descuentoData = null;
+    let monto_descuento = 0;
+    let monto_final = normalizedMonto;
+
+    if (descuento_id) {
+      const { data: discount, error: discountError } = await supabase
+        .from('descuentos')
+        .select('*')
+        .eq('id', descuento_id)
+        .single();
+
+      if (discountError || !discount) {
+        return res.status(400).json({ message: 'Descuento no encontrado', code: 'DISCOUNT_NOT_FOUND' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (discount.estado !== 'aprobado' || !discount.activo || discount.fecha_inicio > today || discount.fecha_fin < today) {
+        return res.status(400).json({ message: 'El descuento no está vigente o no es aplicable', code: 'DISCOUNT_NOT_VALID' });
+      }
+
+      if (discount.aplica_a && discount.aplica_a !== 'TODOS') {
+        const allowedRoles = discount.aplica_a.split(',').map((item) => item.trim().toUpperCase());
+        if (!allowedRoles.includes(req.user?.rol?.toUpperCase() || '')) {
+          return res.status(403).json({ message: 'No tienes permiso para aplicar este descuento', code: 'DISCOUNT_NOT_ALLOWED' });
+        }
+      }
+
+      const valor = Number(discount.valor) || 0;
+      monto_descuento = discount.tipo === 'porcentaje'
+        ? Math.min(Number((normalizedMonto * (valor / 100)).toFixed(2)), normalizedMonto)
+        : Math.min(valor, normalizedMonto);
+      monto_final = Number((normalizedMonto - monto_descuento).toFixed(2));
+      descuentoData = discount;
+    }
+
     const payload = {
       id_paciente: req.user.id,
-      monto: normalizeAmount(monto),
+      monto: normalizedMonto,
+      monto_descuento,
+      monto_final,
+      descuento_id: descuentoData?.id || null,
+      descuento_nombre: descuentoData?.nombre || null,
+      descuento_tipo: descuentoData?.tipo || null,
+      descuento_valor: descuentoData?.valor || null,
       metodo_pago: metodo_pago || metodo || 'Yape',
       estado,
       fecha: fecha || fecha_pago || new Date().toISOString().split('T')[0],
+      servicio: servicio ?? null,
+      descripcion: descripcion ?? null,
     };
 
     const { data, error } = await supabase.from('pagos').insert([payload]).select('*').single();
@@ -41,7 +95,7 @@ const createPayment = async (req, res) => {
 const listPayments = async (req, res) => {
   try {
     const { patientId, status, startDate, endDate } = req.query;
-    let query = supabase.from('pagos').select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)');
+    let query = supabase.from('pagos').select('*, pacientes:id_paciente(nombre)');
 
     if (patientId) {
       query = query.eq('id_paciente', patientId);
@@ -76,7 +130,7 @@ const getPaymentsByPatient = async (req, res) => {
     const { patientId } = req.params;
     const { data, error } = await supabase
       .from('pagos')
-      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)')
+      .select('*, pacientes:id_paciente(nombre)')
       .eq('id_paciente', patientId)
       .order('fecha', { ascending: false });
 
@@ -95,7 +149,7 @@ const getPaymentDetails = async (req, res) => {
     const { paymentId } = req.params;
     const { data, error } = await supabase
       .from('pagos')
-      .select('id, fecha, monto, metodo_pago, estado, id_paciente, comprobante, estado_validacion, pacientes:id_paciente(nombre)')
+      .select('*, pacientes:id_paciente(nombre)')
       .eq('id', paymentId)
       .single();
 
