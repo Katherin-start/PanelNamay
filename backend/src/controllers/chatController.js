@@ -295,6 +295,8 @@ const getChatContacts = async (req, res) => {
         last_message: lastMessage?.mensaje ?? '',
         last_message_at: lastMessage?.fecha ?? null,
         mensajes_no_leidos: unreadCount,
+        online: false, // Se actualiza via socket.io en tiempo real
+        last_seen: null, // Se actualiza via socket.io en tiempo real
       };
     });
 
@@ -523,6 +525,111 @@ const markMessagesAsRead = async (req, res) => {
   }
 };
 
+// 🗑️ NUEVA FUNCIÓN: Eliminar mensaje
+const deleteMessageForMe = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const { messageId } = req.body;
+
+    if (!messageId) {
+      return res.status(400).json({ message: 'messageId es requerido', code: 'MISSING_FIELDS' });
+    }
+
+    // Obtener el mensaje para verificar que existe
+    const { data: messageData, error: fetchError } = await supabase
+      .from('mensajes')
+      .select('id')
+      .eq('id', messageId)
+      .limit(1);
+
+    if (fetchError || !messageData || messageData.length === 0) {
+      return res.status(404).json({ message: 'Mensaje no encontrado', code: 'NOT_FOUND' });
+    }
+
+    // Eliminar completamente el mensaje
+    const { error: deleteError } = await supabase
+      .from('mensajes')
+      .delete()
+      .eq('id', messageId);
+
+    if (deleteError) {
+      return res.status(500).json({
+        message: 'Error al eliminar mensaje',
+        code: 'DELETE_ERROR',
+        error: deleteError.message,
+      });
+    }
+
+    // Emitir evento de socket
+    try {
+      const io = getIO();
+      io.emit('message_deleted', {
+        messageId,
+        deletedByUserId: currentUserId,
+      });
+    } catch (err) {
+      console.warn('Error emitiendo socket:', err.message);
+    }
+
+    res.json({
+      code: 'SUCCESS',
+      message: 'Mensaje eliminado correctamente',
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// 🗑️ NUEVA FUNCIÓN: Vaciar chat
+const clearChat = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const { otherUserId } = req.body;
+
+    if (!otherUserId) {
+      return res.status(400).json({ message: 'otherUserId es requerido', code: 'MISSING_FIELDS' });
+    }
+
+    const conversation = await findConversationByPair(currentUserId, otherUserId);
+    if (!conversation) {
+      return res.json({ code: 'SUCCESS', messages_cleared: 0 });
+    }
+
+    // Eliminar todos los mensajes de la conversación
+    const { error: deleteError } = await supabase
+      .from('mensajes')
+      .delete()
+      .eq('id_conversacion', conversation.id);
+
+    if (deleteError) {
+      return res.status(500).json({
+        message: 'Error al vaciar chat',
+        code: 'DELETE_ERROR',
+        error: deleteError.message,
+      });
+    }
+
+    // Emitir evento de socket
+    try {
+      const io = getIO();
+      io.emit('chat_cleared', {
+        conversationId: conversation.id,
+        clearedByUserId: currentUserId,
+      });
+    } catch (err) {
+      console.warn('Error emitiendo socket:', err.message);
+    }
+
+    res.json({
+      code: 'SUCCESS',
+      message: 'Chat vaciado correctamente',
+      messages_cleared: 0,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 module.exports = {
   getChatMessages,
   sendMessage,
@@ -530,4 +637,6 @@ module.exports = {
   getUnreadMessagesCount,
   markMessagesAsRead,
   uploadChatAttachment,
+  deleteMessageForMe,
+  clearChat,
 };

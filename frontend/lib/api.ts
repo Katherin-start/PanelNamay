@@ -383,6 +383,22 @@ class ApiClient {
     });
   }
 
+  // 🗑️ Eliminar mensaje completamente
+  async deleteMessage(messageId: string) {
+    return this.request('/chat/messages/delete', {
+      method: 'POST',
+      body: JSON.stringify({ messageId }),
+    });
+  }
+
+  // 🗑️ Vaciar chat
+  async clearChat(otherUserId: string) {
+    return this.request('/chat/clear', {
+      method: 'POST',
+      body: JSON.stringify({ otherUserId }),
+    });
+  }
+
   // Users endpoints — el backend usa /auth/users para listar, /auth/register para crear
   private rolIdToName(rolId: number): string {
     const map: Record<number, string> = {
@@ -458,14 +474,22 @@ class ApiClient {
 
   // Profile photo endpoints
   async uploadProfilePhoto(file: File) {
+    console.log('📸 Preparando carga de foto:', { fileName: file.name, size: file.size, type: file.type });
+    
     const formData = new FormData();
     formData.append('foto', file);
     
-    const res = await this.request('/auth/profile/photo', {
-      method: 'PUT',
-      body: formData,
-    });
-    return res;
+    try {
+      const res = await this.request('/auth/profile/photo', {
+        method: 'PUT',
+        body: formData,
+      });
+      console.log('✅ Foto cargada exitosamente:', res);
+      return res;
+    } catch (error: any) {
+      console.error('❌ Error al cargar foto:', error);
+      throw error;
+    }
   }
 
   // Setup endpoints

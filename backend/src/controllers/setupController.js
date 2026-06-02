@@ -4,46 +4,70 @@ const initializeStorage = async (req, res) => {
   try {
     console.log('🔧 Inicializando Storage de Supabase...');
     
-    const bucketName = 'chat-files';
-    
-    // Intentar obtener el bucket
-    const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket(bucketName);
+    const bucketsToCreate = [
+      { name: 'chat-files', size: 20 * 1024 * 1024 }, // 20 MB
+      { name: 'profile-photos', size: 5 * 1024 * 1024 } // 5 MB
+    ];
 
-    if (bucketData) {
-      // El bucket ya existe
-      console.log(`✅ Bucket ${bucketName} ya existe`);
-      return res.json({ 
-        code: 'SUCCESS',
-        message: `Bucket ${bucketName} ya existe`,
-        bucket: bucketData,
-      });
-    }
+    const results = [];
 
-    // Si no existe o hubo un error, intentar crear el bucket de todas formas
-    console.log(`📦 Bucket ${bucketName} no encontrado (detalle: ${getBucketError?.message || 'sin detalle'}). Intentando crearlo...`);
+    for (const bucket of bucketsToCreate) {
+      try {
+        // Intentar obtener el bucket
+        const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket(bucket.name);
 
-    const { data: createdBucket, error: createError } = await supabase.storage.createBucket(
-      bucketName,
-      { 
-        public: true,
-        fileSizeLimit: 20 * 1024 * 1024, // 20 MB
+        if (bucketData) {
+          // El bucket ya existe
+          console.log(`✅ Bucket ${bucket.name} ya existe`);
+          results.push({
+            name: bucket.name,
+            status: 'exists',
+            message: `Bucket ${bucket.name} ya existe`
+          });
+          continue;
+        }
+
+        // Si no existe, crear el bucket
+        console.log(`📦 Creando bucket ${bucket.name}...`);
+
+        const { data: createdBucket, error: createError } = await supabase.storage.createBucket(
+          bucket.name,
+          { 
+            public: true,
+            fileSizeLimit: bucket.size,
+          }
+        );
+
+        if (createError) {
+          console.error(`❌ Error al crear bucket ${bucket.name}: ${createError.message}`);
+          results.push({
+            name: bucket.name,
+            status: 'error',
+            message: `Error al crear: ${createError.message}`
+          });
+          continue;
+        }
+
+        console.log(`✅ Bucket ${bucket.name} creado exitosamente`);
+        results.push({
+          name: bucket.name,
+          status: 'created',
+          message: `Bucket ${bucket.name} creado exitosamente`
+        });
+      } catch (err) {
+        console.error(`❌ Error procesando bucket ${bucket.name}:`, err);
+        results.push({
+          name: bucket.name,
+          status: 'error',
+          message: err.message
+        });
       }
-    );
-
-    if (createError) {
-      console.error(`❌ Error al crear bucket: ${createError.message}`, createError);
-      return res.status(500).json({
-        code: 'BUCKET_CREATE_ERROR',
-        message: `Error al crear bucket: ${createError.message}`,
-        error: createError,
-      });
     }
 
-    console.log(`✅ Bucket ${bucketName} creado exitosamente`);
     return res.json({
-      code: 'BUCKET_CREATED',
-      message: `Bucket ${bucketName} creado exitosamente`,
-      bucket: createdBucket,
+      code: 'STORAGE_INITIALIZED',
+      message: 'Inicialización de storage completada',
+      results
     });
 
   } catch (err) {
@@ -76,6 +100,7 @@ const healthCheck = async (req, res) => {
     }
 
     const chatBucket = buckets?.find(b => b.name === 'chat-files');
+    const profileBucket = buckets?.find(b => b.name === 'profile-photos');
 
     res.json({
       code: 'HEALTH_OK',
@@ -86,6 +111,8 @@ const healthCheck = async (req, res) => {
         buckets: buckets?.map(b => ({ name: b.name, public: b.public })) || [],
         chatFilesExiste: !!chatBucket,
         chatFilesPublico: chatBucket?.public ?? false,
+        profilePhotosExiste: !!profileBucket,
+        profilePhotosPublico: profileBucket?.public ?? false,
       },
     });
   } catch (err) {

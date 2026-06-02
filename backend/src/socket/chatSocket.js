@@ -52,12 +52,37 @@ const initializeSocket = (server) => {
     },
   });
 
+  // 📊 Mapa para rastrear usuarios conectados
+  const connectedUsers = new Map();
+
   io.on('connection', (socket) => {
     console.log('Usuario conectado:', socket.id);
 
-    socket.on('join', (userId) => {
-      socket.join(`user_${userId}`);
-      console.log(`Usuario ${userId} se unió a su sala`);
+    socket.on('join', async (userId) => {
+      try {
+        socket.join(`user_${userId}`);
+        connectedUsers.set(userId, {
+          socketId: socket.id,
+          connectedAt: new Date().toISOString(),
+        });
+
+        // ✅ Actualizar usuario como online
+        await supabase
+          .from('usuarios')
+          .update({ online: true, last_seen: new Date().toISOString() })
+          .eq('id', userId);
+
+        console.log(`Usuario ${userId} se unió a su sala (online)`);
+
+        // 📢 Notificar a todos que este usuario está online
+        io.emit('user_status_changed', {
+          userId,
+          online: true,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Error en join:', err);
+      }
     });
 
     socket.on('send_message', async (data) => {
@@ -96,6 +121,19 @@ const initializeSocket = (server) => {
         socket.emit('message_sent', normalized);
       } catch (err) {
         socket.emit('message_error', { error: 'Error interno del servidor' });
+      }
+    });
+
+    socket.on('typing', (data) => {
+      try {
+        const { from, to, isTyping } = data;
+        if (!from || !to) return;
+        io.to(`user_${to}`).emit('user_typing', {
+          from,
+          isTyping: Boolean(isTyping),
+        });
+      } catch (err) {
+        console.error('Error en evento typing:', err);
       }
     });
 
@@ -143,8 +181,41 @@ const initializeSocket = (server) => {
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log('Usuario desconectado:', socket.id);
+
+      // 🔍 Buscar qué usuario se desconectó
+      let disconnectedUserId = null;
+      for (const [userId, userData] of connectedUsers.entries()) {
+        if (userData.socketId === socket.id) {
+          disconnectedUserId = userId;
+          connectedUsers.delete(userId);
+          break;
+        }
+      }
+
+      if (disconnectedUserId) {
+        try {
+          const now = new Date().toISOString();
+          // ❌ Actualizar usuario como offline
+          await supabase
+            .from('usuarios')
+            .update({ online: false, last_seen: now })
+            .eq('id', disconnectedUserId);
+
+          console.log(`Usuario ${disconnectedUserId} se desconectó (offline)`);
+
+          // 📢 Notificar a todos que este usuario está offline
+          io.emit('user_status_changed', {
+            userId: disconnectedUserId,
+            online: false,
+            lastSeen: now,
+            timestamp: now,
+          });
+        } catch (err) {
+          console.error('Error al actualizar estado de desconexión:', err);
+        }
+      }
     });
   });
 

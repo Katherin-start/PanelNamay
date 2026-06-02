@@ -124,15 +124,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     setUploadingPhoto(true);
     try {
+      console.log('📸 Iniciando carga de foto...', { fileName: file.name, size: file.size, type: file.mimetype });
       const res = await apiClient.uploadProfilePhoto(file);
+      console.log('✅ Respuesta del servidor:', res);
+      
       const fotoUrl = res?.foto_perfil;
       if (fotoUrl && user) {
+        console.log('🔗 Actualizando URL de foto:', fotoUrl);
         setUser({ ...user, foto_perfil: fotoUrl });
+        alert('✅ Foto de perfil actualizada exitosamente');
+      } else {
+        console.warn('⚠️ No se recibió URL de foto en la respuesta');
+        alert('Error: No se recibió URL de la foto');
       }
-      alert('Foto de perfil actualizada exitosamente');
     } catch (error: any) {
-      console.error('Error al subir foto:', error);
-      alert(error.message ?? 'Error al subir la foto de perfil');
+      console.error('❌ Error al subir foto:', error);
+      const errorMessage = error.message ?? error?.response?.data?.message ?? 'Error al subir la foto de perfil';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) {

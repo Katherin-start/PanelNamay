@@ -11,6 +11,8 @@ import {
   PaperClipIcon,
   CheckIcon,
   ChecksIcon,
+  TrashIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ChatPage() {
@@ -26,8 +28,12 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [menuOpenMessageId, setMenuOpenMessageId] = useState<string | null>(null);
+  const [contactTyping, setContactTyping] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const selectedContactRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingSentRef = useRef<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const contactsPollRef = useRef<NodeJS.Timeout | null>(null);
@@ -209,6 +215,44 @@ export default function ChatPage() {
       );
     });
 
+    // 🗑️ Evento cuando se elimina un mensaje
+    socket.on('message_deleted', (data: any) => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== data.messageId));
+      refreshContacts();
+    });
+
+    // 🗑️ Evento cuando se vacía el chat
+    socket.on('chat_cleared', (data: any) => {
+      setMessages([]);
+      refreshContacts();
+    });
+
+    // 👤 Evento cuando cambia el estado online/offline de un usuario
+    socket.on('user_status_changed', (data: any) => {
+      setContacts((prev) =>
+        prev.map((contact) =>
+          contact.id === data.userId
+            ? { ...contact, online: data.online, last_seen: data.lastSeen || data.timestamp }
+            : contact
+        )
+      );
+      
+      // Si es el contacto seleccionado, actualizar su estado en el header
+      if (selectedContactRef.current?.id === data.userId) {
+        setSelectedContact((prev) => ({
+          ...prev,
+          online: data.online,
+          last_seen: data.lastSeen || data.timestamp,
+        }));
+      }
+    });
+
+    socket.on('user_typing', (data: any) => {
+      if (selectedContactRef.current?.id === data.from) {
+        setContactTyping(Boolean(data.isTyping));
+      }
+    });
+
     // Setup auto-refresh de contactos cada 5 segundos
     if (contactsPollRef.current) {
       clearInterval(contactsPollRef.current);
@@ -225,6 +269,9 @@ export default function ChatPage() {
       if (contactsPollRef.current) {
         clearInterval(contactsPollRef.current);
       }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
       socket.disconnect();
       socketRef.current = null;
     };
@@ -233,6 +280,52 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const emitTypingStatus = (isTyping: boolean) => {
+    const recipientId = selectedContactRef.current?.id;
+    if (!recipientId || !currentUserId) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit('typing', {
+      from: currentUserId,
+      to: recipientId,
+      isTyping,
+    });
+  };
+
+  const scheduleTypingStopped = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStatus(false);
+      lastTypingSentRef.current = false;
+    }, 1200);
+  };
+
+  const handleTyping = (value: string) => {
+    const isTyping = value.trim().length > 0;
+    if (isTyping && !lastTypingSentRef.current) {
+      emitTypingStatus(true);
+      lastTypingSentRef.current = true;
+    }
+
+    if (!isTyping && lastTypingSentRef.current) {
+      emitTypingStatus(false);
+      lastTypingSentRef.current = false;
+    }
+
+    if (isTyping) {
+      scheduleTypingStopped();
+    } else {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    }
+  };
 
   const normalizeChatMessage = (message: any) => {
     const rawText = message?.mensaje ?? message?.contenido ?? '';
@@ -265,6 +358,37 @@ export default function ChatPage() {
       fecha_envio: message?.fecha_envio ?? message?.created_at ?? new Date().toISOString(),
       leido: Boolean(message?.leido),
     };
+  };
+
+  // 📅 Función para formatear hora relativa
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    if (diffHours < 24) return `Hace ${diffHours}h`;
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays}d`;
+
+    return date.toLocaleDateString('es-PE', {
+      day: 'numeric',
+      month: 'short',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    });
+  };
+
+  // 📅 Función para obtener hora y fecha
+  const getMessageTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -307,6 +431,8 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, normalizeChatMessage(sent?.message ?? sent)]);
       setNewMessage('');
+      emitTypingStatus(false);
+      lastTypingSentRef.current = false;
     } catch (error: any) {
       console.error('Error al enviar mensaje:', error);
       
@@ -328,6 +454,34 @@ export default function ChatPage() {
       alert(errorMessage);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // 🗑️ Eliminar mensaje completamente
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm('¿Estás seguro? El mensaje será eliminado permanentemente')) return;
+
+    try {
+      await apiClient.deleteMessage(messageId);
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      setMenuOpenMessageId(null);
+    } catch (error: any) {
+      console.error('Error al eliminar mensaje:', error);
+      alert('No se pudo eliminar el mensaje');
+    }
+  };
+
+  // 🗑️ Vaciar chat
+  const handleClearChat = async () => {
+    if (!confirm('¿Estás seguro? Se eliminarán TODOS los mensajes de este chat')) return;
+
+    try {
+      await apiClient.clearChat(selectedContact.id);
+      setMessages([]);
+      alert('Chat vaciado correctamente');
+    } catch (error: any) {
+      console.error('Error al vaciar chat:', error);
+      alert('No se pudo vaciar el chat');
     }
   };
 
@@ -448,13 +602,37 @@ export default function ChatPage() {
                     <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
                       {selectedContact.nombre}
                     </p>
+                    <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      <p className="text-xs text-gray-400">En línea</p>
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: selectedContact.online ? '#22c55e' : '#9ca3af' }}
+                      />
+                      <p className="text-xs text-gray-400">
+                        {selectedContact.online 
+                          ? 'En línea' 
+                          : selectedContact.last_seen 
+                            ? `Última vez ${getRelativeTime(selectedContact.last_seen)}`
+                            : 'Sin conexión'
+                        }
+                      </p>
                     </div>
+                    {contactTyping && selectedContact.online && (
+                      <p className="text-xs text-blue-600">Escribiendo...</p>
+                    )}
+                  </div>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400">{selectedContact.correo}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">{selectedContact.correo}</span>
+                  <button
+                    onClick={handleClearChat}
+                    className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Vaciar chat"
+                  >
+                    <TrashIcon className="h-5 w-5 text-red-500" />
+                  </button>
+                </div>
               </div>
 
               {/* Messages */}
@@ -472,46 +650,70 @@ export default function ChatPage() {
                           {!isMine && (
                             <p className="text-xs text-gray-400 mb-1 ml-1">{message.remitente_nombre}</p>
                           )}
-                          <div
-                            className="px-4 py-2.5 text-sm"
-                            style={{
-                              backgroundColor: isMine ? '#1D3557' : '#F1F4F9',
-                              color: isMine ? 'white' : '#1D3557',
-                              borderRadius: isMine ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
-                            }}
-                          >
-                            {message.tipo === 'imagen' && message.attachment_url ? (
-                              <img
-                                src={message.attachment_url}
-                                alt={message.attachment_name ?? 'Imagen'}
-                                className="max-w-full rounded-xl"
-                              />
-                            ) : message.tipo === 'documento' && message.attachment_url ? (
-                              <a
-                                href={message.attachment_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-white underline"
-                                style={{ color: isMine ? 'white' : '#1D3557' }}
-                              >
-                                <PaperClipIcon className="h-4 w-4" />
-                                {message.attachment_name ?? 'Documento'}
-                              </a>
-                            ) : (
-                              <span>{message.mensaje}</span>
-                            )}
+                          <div className="relative group">
+                            <div
+                              className="px-4 py-2.5 text-sm"
+                              style={{
+                                backgroundColor: isMine ? '#1D3557' : '#F1F4F9',
+                                color: isMine ? 'white' : '#1D3557',
+                                borderRadius: isMine ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
+                              }}
+                            >
+                              {message.tipo === 'imagen' && message.attachment_url ? (
+                                <img
+                                  src={message.attachment_url}
+                                  alt={message.attachment_name ?? 'Imagen'}
+                                  className="max-w-full rounded-xl"
+                                />
+                              ) : message.tipo === 'documento' && message.attachment_url ? (
+                                <a
+                                  href={message.attachment_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm text-white underline"
+                                  style={{ color: isMine ? 'white' : '#1D3557' }}
+                                >
+                                  <PaperClipIcon className="h-4 w-4" />
+                                  {message.attachment_name ?? 'Documento'}
+                                </a>
+                              ) : (
+                                <span>{message.mensaje}</span>
+                              )}
 
-                            {message.caption && message.tipo !== 'texto' ? (
-                              <p className="text-[11px] text-white/80 mt-2">{message.caption}</p>
-                            ) : null}
+                              {message.caption && message.tipo !== 'texto' ? (
+                                <p className="text-[11px] text-white/80 mt-2">{message.caption}</p>
+                              ) : null}
+                            </div>
+
+                            {/* 🗑️ Menu de opciones */}
+                            <button
+                              onClick={() => setMenuOpenMessageId(menuOpenMessageId === message.id ? null : message.id)}
+                              className={`absolute ${isMine ? '-left-8' : '-right-8'} top-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity`}
+                              title="Opciones del mensaje"
+                            >
+                              <EllipsisVerticalIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {menuOpenMessageId === message.id && (
+                              <div
+                                className={`absolute ${isMine ? 'right-0' : 'left-0'} top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-max`}
+                              >
+                                <button
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 first:rounded-t-lg flex items-center gap-2"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                  Eliminar mensaje
+                                </button>
+                              </div>
+                            )}
                           </div>
+
                           <div className={`mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
                             <div className="flex items-center gap-1 justify-end" style={isMine ? {} : { justifyContent: 'flex-start' }}>
                               <p className="text-xs text-gray-400">
-                                {new Date(message.fecha_envio).toLocaleTimeString('es-PE', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                                {getMessageTime(message.fecha_envio)}
                               </p>
                               {isMine && (
                                 message.leido ? (
@@ -524,6 +726,14 @@ export default function ChatPage() {
                                 )
                               )}
                             </div>
+                            {/* 📅 Mostrar fecha si es diferente al día anterior */}
+                            <p className="text-xs text-gray-300 mt-1">
+                              {new Date(message.fecha_envio).toLocaleDateString('es-PE', {
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short',
+                              })}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -581,7 +791,10 @@ export default function ChatPage() {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      handleTyping(e.target.value);
+                    }}
                     placeholder={selectedFile ? 'Añade un comentario opcional...' : 'Escribe un mensaje...'}
                     className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D]"
                   />

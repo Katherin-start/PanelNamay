@@ -2,9 +2,9 @@ const supabase = require('../config/supabase');
 const supabaseAuth = require('../config/supabaseAuth');
 const jwt = require('jsonwebtoken');
 
-// Registro para clientes móviles (rol CLIENTE automáticamente)
+// Registro para clientes móviles (siempre paciente, rol_id = 6)
 const mobileRegister = async (req, res) => {
-  const { email, password, nombre, apellido, telefono } = req.body;
+  const { email, password, nombre, apellido, foto_perfil } = req.body;
 
   // Validar campos requeridos
   if (!email || !password || !nombre) {
@@ -14,17 +14,19 @@ const mobileRegister = async (req, res) => {
     });
   }
 
+  // Para registro móvil siempre usar rol paciente (rol_id = 6)
+  const rolId = 6;
+
   try {
-    // Registrar en Supabase Auth usando cliente anónimo separado
-    const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
+    // Registrar en Supabase Auth usando clave de servicio para crear usuario confirmado
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          nombre,
-          apellido,
-          telefono,
-        },
+      email_confirm: true,
+      user_metadata: {
+        nombre,
+        apellido,
+        rol_id: rolId,
       },
     });
 
@@ -36,7 +38,7 @@ const mobileRegister = async (req, res) => {
       });
     }
 
-    // Crear registro en tabla usuarios con rol CLIENTE (id: sin rol_id o rol_id NULL)
+    // Crear registro en tabla usuarios con rol_id
     const { data: usuarioData, error: usuarioError } = await supabase
       .from('usuarios')
       .insert([
@@ -44,16 +46,22 @@ const mobileRegister = async (req, res) => {
           id: authData.user.id,
           correo: email,
           nombre: nombre,
+          apellido: apellido || null,
+          foto_perfil: foto_perfil || null,
+          rol_id: rolId,
           activo: true,
           creado_en: new Date(),
-          // rol_id NULL = CLIENTE (si está configurado así en tu base de datos)
         },
       ])
-      .select('id, nombre, correo, activo');
+      .select('id, nombre, apellido, correo, activo, rol_id, foto_perfil, roles:rol_id(id, nombre)');
 
     if (usuarioError) {
       // Si falla, intentamos eliminar el usuario de Auth
-      await supabase.auth.admin.deleteUser(authData.user.id);
+      try {
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (deleteError) {
+        console.error('Error al eliminar usuario de Auth:', deleteError);
+      }
       return res.status(400).json({ 
         message: 'Error al crear perfil', 
         error: usuarioError.message,
@@ -67,8 +75,12 @@ const mobileRegister = async (req, res) => {
       user: {
         id: usuarioData[0].id,
         nombre: usuarioData[0].nombre,
+        apellido: usuarioData[0].apellido,
         email: usuarioData[0].correo,
-        rol: 'CLIENTE',
+        foto_perfil: usuarioData[0].foto_perfil || null,
+        rol_id: usuarioData[0].rol_id,
+        rol: usuarioData[0].roles?.nombre || 'PACIENTE',
+        activo: usuarioData[0].activo,
       },
     });
   } catch (err) {
@@ -99,16 +111,21 @@ const mobileLogin = async (req, res) => {
     });
 
     if (error) {
-      return res.status(401).json({ 
-        message: 'Credenciales inválidas', 
-        code: 'INVALID_CREDENTIALS'
+      console.error('Supabase login error:', error);
+      const isEmailNotConfirmed = error.code === 'email_not_confirmed';
+      return res.status(error.status || 401).json({ 
+        message: isEmailNotConfirmed
+          ? 'Email no confirmado. Registra nuevamente o confirma tu correo.'
+          : 'Credenciales inválidas', 
+        code: isEmailNotConfirmed ? 'EMAIL_NOT_CONFIRMED' : 'INVALID_CREDENTIALS',
+        error: error.message,
       });
     }
 
-    // Obtener datos del usuario
+    // Obtener datos del usuario incluyendo rol_id
     const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, activo')
+      .select('id, nombre, apellido, correo, activo, rol_id, foto_perfil, roles:rol_id(id, nombre)')
       .eq('correo', email)
       .single();
 
@@ -127,14 +144,15 @@ const mobileLogin = async (req, res) => {
       });
     }
 
-    // Generar JWT
+    // Generar JWT con el rol del usuario
     const token = jwt.sign(
       { 
         id: usuario.id, 
         email: usuario.correo, 
         nombre: usuario.nombre,
-        rol: 'CLIENTE',
-        rol_id: null,
+        apellido: usuario.apellido,
+        rol_id: usuario.rol_id,
+        rol: usuario.roles?.nombre || 'PACIENTE',
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '30d' } // 30 días para móvil
@@ -146,8 +164,12 @@ const mobileLogin = async (req, res) => {
       user: {
         id: usuario.id,
         nombre: usuario.nombre,
+        apellido: usuario.apellido,
         email: usuario.correo,
-        rol: 'CLIENTE',
+        rol_id: usuario.rol_id,
+        rol: usuario.roles?.nombre || 'PACIENTE',
+        foto_perfil: usuario.foto_perfil || null,
+        activo: usuario.activo,
       },
       token,
       refreshToken: data.session?.refresh_token,
@@ -206,7 +228,7 @@ const getMobileProfile = async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, activo, creado_en, foto_perfil')
+      .select('id, nombre, apellido, correo, activo, creado_en, foto_perfil, rol_id, roles:rol_id(id, nombre)')
       .eq('id', req.user.id)
       .single();
 
@@ -222,11 +244,13 @@ const getMobileProfile = async (req, res) => {
       profile: {
         id: usuario.id,
         nombre: usuario.nombre,
+        apellido: usuario.apellido,
         email: usuario.correo,
-        rol: 'CLIENTE',
+        rol_id: usuario.rol_id,
+        rol: usuario.roles?.nombre || 'PACIENTE',
         activo: usuario.activo,
         creado_en: usuario.creado_en,
-        foto_perfil: usuario.foto_perfil,
+        foto_perfil: usuario.foto_perfil || null,
       } 
     });
   } catch (err) {
@@ -272,10 +296,116 @@ const updateMobileProfile = async (req, res) => {
   }
 };
 
+// Subir foto de perfil desde app móvil
+const uploadMobileProfilePhoto = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        message: 'No se proporcionó archivo',
+        code: 'NO_FILE'
+      });
+    }
+
+    const file = req.file;
+    const userId = req.user.id;
+
+    // Validar tipo de archivo
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      return res.status(400).json({ 
+        message: 'Solo se permiten archivos de imagen (JPEG, PNG, WebP, GIF)',
+        code: 'INVALID_FILE_TYPE'
+      });
+    }
+
+    // Validar tamaño (máx 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ 
+        message: 'La imagen no puede exceder 5MB',
+        code: 'FILE_TOO_LARGE'
+      });
+    }
+
+    // Generar nombre de archivo único
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+    const filePath = `profiles/${fileName}`;
+
+    console.log(`📸 Subiendo foto de perfil (mobile) para usuario ${userId}: ${fileName}`);
+
+    // Subir archivo a Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('profile-photos')
+      .upload(filePath, file.buffer, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.mimetype,
+      });
+
+    if (uploadError) {
+      console.error('❌ Error subiendo foto:', uploadError);
+      return res.status(500).json({ 
+        message: 'Error al subir imagen',
+        code: 'UPLOAD_ERROR',
+        error: uploadError.message
+      });
+    }
+
+    console.log(`✅ Foto subida exitosamente: ${filePath}`);
+
+    // Obtener URL pública
+    const { data: publicUrlData } = supabase.storage
+      .from('profile-photos')
+      .getPublicUrl(filePath);
+    const publicUrl = publicUrlData?.publicUrl;
+
+    if (!publicUrl) {
+      console.error('❌ Error obteniendo URL pública');
+      return res.status(500).json({ 
+        message: 'Error al obtener URL de la imagen', 
+        code: 'URL_ERROR' 
+      });
+    }
+
+    console.log(`🔗 URL pública generada: ${publicUrl}`);
+
+    // Actualizar URL en la base de datos
+    const { error: updateError } = await supabase
+      .from('usuarios')
+      .update({ foto_perfil: publicUrl })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('❌ Error actualizando usuario:', updateError);
+      return res.status(500).json({ 
+        message: 'Error al actualizar perfil',
+        code: 'UPDATE_ERROR',
+        error: updateError.message
+      });
+    }
+
+    console.log(`✅ Foto de perfil actualizada para usuario ${userId}`);
+
+    res.json({
+      message: 'Foto de perfil actualizada exitosamente',
+      code: 'PHOTO_UPDATED',
+      foto_perfil: publicUrl,
+    });
+  } catch (err) {
+    console.error('❌ Error en uploadMobileProfilePhoto:', err);
+    res.status(500).json({ 
+      message: 'Error interno', 
+      error: err.message,
+      code: 'SERVER_ERROR'
+    });
+  }
+};
+
 module.exports = {
   mobileRegister,
   mobileLogin,
   getMobileDoctors,
   getMobileProfile,
   updateMobileProfile,
+  uploadMobileProfilePhoto,
 };

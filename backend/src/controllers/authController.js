@@ -20,7 +20,7 @@ const login = async (req, res) => {
     // Obtener datos del usuario de la tabla usuarios
     const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
       .eq('correo', email)
       .single();
 
@@ -54,6 +54,7 @@ const login = async (req, res) => {
         email: usuario.correo,
         rol: usuario.roles?.nombre || 'CLIENTE',
         rol_id: usuario.rol_id,
+        foto_perfil: usuario.foto_perfil,
       },
       token,
       session: data.session,
@@ -205,26 +206,14 @@ const updateProfilePhoto = async (req, res) => {
       return res.status(400).json({ message: 'La imagen no puede exceder 5MB', code: 'FILE_TOO_LARGE' });
     }
 
+    // Generar nombre de archivo único
     const fileExt = file.originalname.split('.').pop();
     const fileName = `${userId}_${Date.now()}.${fileExt}`;
     const filePath = `profiles/${fileName}`;
 
-    // Crear bucket si no existe
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const profilePhotoBucket = buckets?.find(b => b.name === 'profile-photos');
-    
-    if (!profilePhotoBucket) {
-      const { error: createError } = await supabase.storage.createBucket('profile-photos', {
-        public: true,
-        fileSizeLimit: 5242880, // 5MB
-      });
-      if (createError) {
-        console.error('Error creando bucket:', createError);
-        return res.status(500).json({ message: 'Error al crear bucket', code: 'BUCKET_ERROR' });
-      }
-    }
+    console.log(`📸 Subiendo foto de perfil para usuario ${userId}: ${fileName}`);
 
-    // Subir archivo
+    // Subir archivo a Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('profile-photos')
       .upload(filePath, file.buffer, {
@@ -234,9 +223,15 @@ const updateProfilePhoto = async (req, res) => {
       });
 
     if (uploadError) {
-      console.error('Error subiendo foto:', uploadError);
-      return res.status(500).json({ message: 'Error al subir imagen', code: 'UPLOAD_ERROR', error: uploadError.message });
+      console.error('❌ Error subiendo foto:', uploadError);
+      return res.status(500).json({ 
+        message: 'Error al subir imagen', 
+        code: 'UPLOAD_ERROR', 
+        error: uploadError.message 
+      });
     }
+
+    console.log(`✅ Foto subida exitosamente: ${filePath}`);
 
     // Obtener URL pública
     const { data: publicUrlData } = supabase.storage
@@ -244,16 +239,32 @@ const updateProfilePhoto = async (req, res) => {
       .getPublicUrl(filePath);
     const publicUrl = publicUrlData?.publicUrl;
 
-    // Actualizar URL en la BD
+    if (!publicUrl) {
+      console.error('❌ Error obteniendo URL pública');
+      return res.status(500).json({ 
+        message: 'Error al obtener URL de la imagen', 
+        code: 'URL_ERROR' 
+      });
+    }
+
+    console.log(`🔗 URL pública generada: ${publicUrl}`);
+
+    // Actualizar URL en la base de datos
     const { error: updateError } = await supabase
       .from('usuarios')
       .update({ foto_perfil: publicUrl })
       .eq('id', userId);
 
     if (updateError) {
-      console.error('Error actualizando usuario:', updateError);
-      return res.status(500).json({ message: 'Error al actualizar perfil', code: 'UPDATE_ERROR' });
+      console.error('❌ Error actualizando usuario:', updateError);
+      return res.status(500).json({ 
+        message: 'Error al actualizar perfil', 
+        code: 'UPDATE_ERROR',
+        error: updateError.message 
+      });
     }
+
+    console.log(`✅ Foto de perfil actualizada para usuario ${userId}`);
 
     res.json({
       message: 'Foto de perfil actualizada exitosamente',
@@ -261,8 +272,12 @@ const updateProfilePhoto = async (req, res) => {
       foto_perfil: publicUrl,
     });
   } catch (err) {
-    console.error('Error en updateProfilePhoto:', err);
-    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+    console.error('❌ Error en updateProfilePhoto:', err);
+    res.status(500).json({ 
+      message: 'Error interno', 
+      error: err.message, 
+      code: 'SERVER_ERROR' 
+    });
   }
 };
 

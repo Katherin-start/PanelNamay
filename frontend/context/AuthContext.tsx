@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   rol: string; // ADMINISTRADOR | ODONTOLOGO | RECEPCIONISTA | CAJERO | PRACTICANTE
   rol_id?: string;
+  foto_perfil?: string;
 }
 
 interface AuthContextType {
