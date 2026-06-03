@@ -21,6 +21,7 @@ import {
   ShieldCheckIcon,
   EnvelopeIcon,
   KeyIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
@@ -33,6 +34,7 @@ const allNavigation = [
   { name: 'Descuentos', href: '/descuentos', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   { name: 'Reportes', href: '/reportes', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'CAJERO', 'RECEPCIONISTA', 'PRACTICANTE'] },
   { name: 'Chat', href: '/chat', icon: ChatBubbleLeftRightIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE'] },
+  { name: 'Mi Biografía', href: '/mi-biografia', icon: DocumentTextIcon, roles: ['ODONTOLOGO'] },
   { name: 'Usuarios', href: '/usuarios', icon: UserGroupIcon, roles: ['ADMINISTRADOR'] },
 ];
 

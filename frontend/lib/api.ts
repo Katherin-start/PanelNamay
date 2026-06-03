@@ -109,6 +109,23 @@ class ApiClient {
     return this.request('/auth/profile');
   }
 
+  async getMyReviews() {
+    return this.request('/auth/profile/reviews');
+  }
+
+  // 📝 Biografía del odontólogo
+  async updateBiography(biografia: string) {
+    return this.request('/auth/profile/biography', {
+      method: 'PUT',
+      body: JSON.stringify({ biografia }),
+    });
+  }
+
+  // 🦷 Perfil del odontólogo (para pacientes)
+  async getDentistProfile(dentistId: string) {
+    return this.request(`/auth/dentists/${dentistId}`);
+  }
+
   // Dashboard endpoints
   async getDashboardMetrics() {
     return this.request('/dashboard/metrics');

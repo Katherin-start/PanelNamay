@@ -165,7 +165,7 @@ const getProfile = async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, biografia, roles:rol_id(id, nombre)')
       .eq('id', req.user.id)
       .single();
 
@@ -179,9 +179,21 @@ const getProfile = async (req, res) => {
         nombre: usuario.nombre,
         email: usuario.correo,
         rol: usuario.roles?.nombre,
+        rol_id: usuario.rol_id,
         activo: usuario.activo,
         foto_perfil: usuario.foto_perfil,
-      } 
+        biografia: usuario.biografia || null,
+      },
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.correo,
+        rol: usuario.roles?.nombre,
+        rol_id: usuario.rol_id,
+        activo: usuario.activo,
+        foto_perfil: usuario.foto_perfil,
+        biografia: usuario.biografia || null,
+      }
     });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message });
@@ -320,6 +332,113 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// 📝 ACTUALIZAR BIOGRAFÍA DEL ODONTÓLOGO
+const updateBiography = async (req, res) => {
+  try {
+    const { biografia } = req.body;
+    const userId = req.user.id;
+
+    if (!biografia) {
+      return res.status(400).json({ message: 'La biografía es requerida', code: 'MISSING_BIOGRAPHY' });
+    }
+
+    // Validar que sea odontólogo (rol_id = 2)
+    const { data: usuario, error: checkError } = await supabase
+      .from('usuarios')
+      .select('id, rol_id')
+      .eq('id', userId)
+      .single();
+
+    if (checkError || !usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado', code: 'USER_NOT_FOUND' });
+    }
+
+    if (usuario.rol_id !== 2) {
+      return res.status(403).json({ message: 'Solo los odontólogos pueden actualizar su biografía', code: 'FORBIDDEN' });
+    }
+
+    // Actualizar biografía
+    const { data: updated, error: updateError } = await supabase
+      .from('usuarios')
+      .update({ biografia })
+      .eq('id', userId)
+      .select('id, nombre, biografia, foto_perfil')
+      .single();
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Error al actualizar biografía', code: 'UPDATE_ERROR', error: updateError.message });
+    }
+
+    res.json({
+      code: 'BIOGRAPHY_UPDATED',
+      message: 'Biografía actualizada exitosamente',
+      user: updated,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// 📝 Obtener reseñas del odontólogo autenticado
+const getMyReviews = async (req, res) => {
+  try {
+    const dentistId = req.user.id;
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('resenas')
+      .select('id, rating, comentario, creado_en, id_paciente, pacientes:id_paciente(id, nombre, apellido, foto_perfil)')
+      .eq('id_odontologo', dentistId)
+      .order('creado_en', { ascending: false });
+
+    if (reviewsError) {
+      return res.status(500).json({ message: 'Error al obtener reseñas', code: 'REVIEWS_ERROR' });
+    }
+
+    res.json({ code: 'MY_REVIEWS_SUCCESS', reviews: reviewsData || [] });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// 🦷 OBTENER PERFIL DEL ODONTÓLOGO (para pacientes)
+const getDentistProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: 'ID del odontólogo es requerido', code: 'MISSING_ID' });
+    }
+
+    // Obtener perfil del odontólogo
+    const { data: dentist, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, apellido, biografia, foto_perfil, rol_id')
+      .eq('id', id)
+      .single();
+
+    if (error || !dentist) {
+      return res.status(404).json({ message: 'Odontólogo no encontrado', code: 'DENTIST_NOT_FOUND' });
+    }
+
+    // Verificar que es odontólogo (rol_id = 2)
+    if (dentist.rol_id !== 2) {
+      return res.status(404).json({ message: 'Este usuario no es odontólogo', code: 'NOT_DENTIST' });
+    }
+
+    res.json({
+      code: 'DENTIST_PROFILE_SUCCESS',
+      dentist: {
+        id: dentist.id,
+        nombre: dentist.nombre,
+        apellido: dentist.apellido,
+        biografia: dentist.biografia || 'Sin biografía registrada',
+        foto_perfil: dentist.foto_perfil,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 module.exports = {
   login,
   register,
@@ -328,4 +447,7 @@ module.exports = {
   getUsers,
   updateProfilePhoto,
   deleteUser,
+  updateBiography,
+  getMyReviews,
+  getDentistProfile,
 };

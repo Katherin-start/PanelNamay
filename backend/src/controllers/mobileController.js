@@ -319,8 +319,8 @@ const getMobileDoctorById = async (req, res) => {
     // Obtener reseñas del odontólogo
     const { data: reviewsData, error: reviewsError } = await supabase
       .from('resenas')
-      .select('id, rating, comentario, creado_en, paciente_id, pacientes:paciente_id(id, nombre, apellido, foto_perfil)')
-      .eq('doctor_id', doctorId)
+      .select('id, rating, comentario, creado_en, id_paciente, pacientes:id_paciente(id, nombre, apellido, foto_perfil)')
+      .eq('id_odontologo', doctorId)
       .order('creado_en', { ascending: false });
 
     if (reviewsError) {
@@ -363,13 +363,13 @@ const createReview = async (req, res) => {
       .from('resenas')
       .insert([
         {
-          doctor_id: doctorId,
-          paciente_id: pacienteId,
+          id_odontologo: doctorId,
+          id_paciente: pacienteId,
           rating: Number(rating),
           comentario: comentario || null,
         }
       ])
-      .select('id, doctor_id, paciente_id, rating, comentario, creado_en');
+      .select('id, id_odontologo, id_paciente, rating, comentario, creado_en');
 
     if (error) {
       return res.status(500).json({ message: 'Error al crear reseña', error: error.message, code: 'CREATE_REVIEW_ERROR' });
@@ -387,8 +387,8 @@ const getMyReviews = async (req, res) => {
     const doctorId = req.user.id;
     const { data: reviewsData, error: reviewsError } = await supabase
       .from('resenas')
-      .select('id, rating, comentario, creado_en, paciente_id, pacientes:paciente_id(id, nombre, apellido, foto_perfil)')
-      .eq('doctor_id', doctorId)
+      .select('id, rating, comentario, creado_en, id_paciente, pacientes:id_paciente(id, nombre, apellido, foto_perfil)')
+      .eq('id_odontologo', doctorId)
       .order('creado_en', { ascending: false });
 
     if (reviewsError) {
