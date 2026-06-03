@@ -51,9 +51,10 @@ const mobileRegister = async (req, res) => {
           rol_id: rolId,
           activo: true,
           creado_en: new Date(),
+          biografia: null,
         },
       ])
-      .select('id, nombre, apellido, correo, activo, rol_id, foto_perfil, roles:rol_id(id, nombre)');
+      .select('id, nombre, apellido, correo, activo, rol_id, foto_perfil, biografia, roles:rol_id(id, nombre)');
 
     if (usuarioError) {
       // Si falla, intentamos eliminar el usuario de Auth
@@ -188,7 +189,7 @@ const getMobileDoctors = async (req, res) => {
   try {
     const { data: usuarios, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, biografia, roles:rol_id(id, nombre)')
       .eq('activo', true)
       .order('nombre', { ascending: true });
 
@@ -208,6 +209,7 @@ const getMobileDoctors = async (req, res) => {
         correo: usuario.correo,
         rol: usuario.roles?.nombre || 'ODONTOLOGO',
         foto_perfil: usuario.foto_perfil,
+        biografia: usuario.biografia || null,
         activo: usuario.activo,
       }));
 
@@ -228,7 +230,7 @@ const getMobileProfile = async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, apellido, correo, activo, creado_en, foto_perfil, rol_id, roles:rol_id(id, nombre)')
+      .select('id, nombre, apellido, correo, activo, creado_en, foto_perfil, rol_id, biografia, roles:rol_id(id, nombre)')
       .eq('id', req.user.id)
       .single();
 
@@ -251,6 +253,7 @@ const getMobileProfile = async (req, res) => {
         activo: usuario.activo,
         creado_en: usuario.creado_en,
         foto_perfil: usuario.foto_perfil || null,
+        biografia: usuario.biografia || null,
       } 
     });
   } catch (err) {
@@ -264,16 +267,19 @@ const getMobileProfile = async (req, res) => {
 
 // Actualizar perfil del cliente
 const updateMobileProfile = async (req, res) => {
-  const { nombre, apellido, telefono } = req.body;
+  const { nombre, apellido, telefono, biografia } = req.body;
 
   try {
+    const updateBody = {};
+    if (nombre !== undefined) updateBody.nombre = nombre;
+    if (apellido !== undefined) updateBody.apellido = apellido;
+    if (biografia !== undefined) updateBody.biografia = biografia;
+
     const { data: updated, error } = await supabase
       .from('usuarios')
-      .update({
-        nombre: nombre || undefined,
-      })
+      .update(updateBody)
       .eq('id', req.user.id)
-      .select('id, nombre, correo, foto_perfil');
+      .select('id, nombre, correo, foto_perfil, biografia');
 
     if (error) {
       return res.status(500).json({ 
@@ -293,6 +299,105 @@ const updateMobileProfile = async (req, res) => {
       error: err.message,
       code: 'SERVER_ERROR'
     });
+  }
+};
+
+// Obtener perfil público de un odontólogo por id (incluye reseñas)
+const getMobileDoctorById = async (req, res) => {
+  const doctorId = req.params.id;
+  try {
+    const { data: usuario, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, apellido, correo, activo, creado_en, foto_perfil, rol_id, biografia, roles:rol_id(id, nombre)')
+      .eq('id', doctorId)
+      .single();
+
+    if (error || !usuario) {
+      return res.status(404).json({ message: 'Odontólogo no encontrado', code: 'DOCTOR_NOT_FOUND' });
+    }
+
+    // Obtener reseñas del odontólogo
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('resenas')
+      .select('id, rating, comentario, creado_en, paciente_id, pacientes:paciente_id(id, nombre, apellido, foto_perfil)')
+      .eq('doctor_id', doctorId)
+      .order('creado_en', { ascending: false });
+
+    if (reviewsError) {
+      return res.status(500).json({ message: 'Error al obtener reseñas', code: 'REVIEWS_ERROR' });
+    }
+
+    res.json({
+      code: 'DOCTOR_PROFILE_SUCCESS',
+      doctor: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        email: usuario.correo,
+        rol_id: usuario.rol_id,
+        rol: usuario.roles?.nombre || 'ODONTOLOGO',
+        foto_perfil: usuario.foto_perfil || null,
+        biografia: usuario.biografia || null,
+        activo: usuario.activo,
+        creado_en: usuario.creado_en,
+        reseñas: reviewsData || [],
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Crear reseña para un odontólogo (pacientes desde app móvil)
+const createReview = async (req, res) => {
+  const doctorId = req.params.id;
+  const pacienteId = req.user.id;
+  const { rating, comentario } = req.body;
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Rating inválido (1-5)', code: 'INVALID_RATING' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('resenas')
+      .insert([
+        {
+          doctor_id: doctorId,
+          paciente_id: pacienteId,
+          rating: Number(rating),
+          comentario: comentario || null,
+        }
+      ])
+      .select('id, doctor_id, paciente_id, rating, comentario, creado_en');
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al crear reseña', error: error.message, code: 'CREATE_REVIEW_ERROR' });
+    }
+
+    res.status(201).json({ code: 'CREATE_REVIEW_SUCCESS', review: data[0] });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Obtener reseñas del odontólogo autenticado
+const getMyReviews = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('resenas')
+      .select('id, rating, comentario, creado_en, paciente_id, pacientes:paciente_id(id, nombre, apellido, foto_perfil)')
+      .eq('doctor_id', doctorId)
+      .order('creado_en', { ascending: false });
+
+    if (reviewsError) {
+      return res.status(500).json({ message: 'Error al obtener reseñas', code: 'REVIEWS_ERROR' });
+    }
+
+    res.json({ code: 'MY_REVIEWS_SUCCESS', reviews: reviewsData || [] });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
 };
 
@@ -446,6 +551,9 @@ module.exports = {
   getMobileDoctors,
   getMobileProfile,
   updateMobileProfile,
+  getMobileDoctorById,
+  createReview,
+  getMyReviews,
   uploadMobileProfilePhoto,
   getMobileDiscounts,
 };

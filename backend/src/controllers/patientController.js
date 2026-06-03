@@ -79,15 +79,37 @@ const updatePatientState = async (req, res) => {
       return res.status(400).json({ message: 'El estado es requerido', code: 'REQUIRED_FIELD' });
     }
 
-    const { data: patient, error } = await supabase
+    // Intentar con diferentes tipos de ID
+    let patient = null;
+    
+    // Intenta primero como UUID/texto
+    const { data: p1, error: e1 } = await supabase
       .from('pacientes')
       .update({ estado })
-      .eq('id', id)
+      .filter('id', 'eq', id)
       .select('id, nombre, dni, telefono, estado')
       .single();
 
-    if (error) {
-      return res.status(500).json({ message: 'Error al actualizar estado del paciente', code: 'UPDATE_ERROR', error: error.message });
+    if (e1) {
+      // Si falla, intenta como número
+      const numId = parseInt(id, 10);
+      if (!isNaN(numId)) {
+        const { data: p2, error: e2 } = await supabase
+          .from('pacientes')
+          .update({ estado })
+          .eq('id', numId)
+          .select('id, nombre, dni, telefono, estado')
+          .single();
+        
+        if (e2) {
+          return res.status(500).json({ message: 'Error al actualizar estado del paciente', code: 'UPDATE_ERROR', error: e2.message });
+        }
+        patient = p2;
+      } else {
+        return res.status(500).json({ message: 'Error al actualizar estado del paciente', code: 'UPDATE_ERROR', error: e1.message });
+      }
+    } else {
+      patient = p1;
     }
 
     res.json({
@@ -99,7 +121,7 @@ const updatePatientState = async (req, res) => {
   }
 };
 
-// ❌ ELIMINAR PACIENTE
+// ❌ ELIMINAR PACIENTE (que es un usuario con rol_id = 6)
 const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
@@ -108,23 +130,107 @@ const deletePatient = async (req, res) => {
       return res.status(400).json({ message: 'El ID del paciente es requerido', code: 'REQUIRED_FIELD' });
     }
 
-    const { data: deletedPatient, error } = await supabase
-      .from('pacientes')
-      .delete()
-      .eq('id', id)
-      .select('id, nombre')
-      .single();
+    console.log(`[DELETE PATIENT] Iniciando eliminación de paciente/usuario con ID: ${id}`);
 
-    if (error) {
-      return res.status(500).json({ message: 'Error al eliminar paciente', code: 'DELETE_ERROR', error: error.message });
+    // PASO 1: Obtener información del usuario (paciente) - debe tener rol_id = 6
+    let usuarioInfo = null;
+    const queryAttempts = [
+      () => supabase.from('usuarios').select('id, nombre, rol_id').filter('id', 'eq', id),
+      () => supabase.from('usuarios').select('id, nombre, rol_id').eq('id', parseInt(id, 10)),
+    ];
+
+    for (const query of queryAttempts) {
+      try {
+        const { data, error } = await query();
+        if (data && data.length > 0) {
+          const usuario = data[0];
+          // Verificar que es paciente (rol_id = 6)
+          if (usuario.rol_id === 6) {
+            usuarioInfo = usuario;
+            console.log(`[DELETE PATIENT] Usuario encontrado:`, usuarioInfo);
+            break;
+          } else {
+            console.log(`[DELETE PATIENT] Usuario encontrado pero no es paciente (rol_id: ${usuario.rol_id})`);
+          }
+        }
+      } catch (e) {
+        console.log(`[DELETE PATIENT] Intento de búsqueda falló, intentando siguiente...`);
+        continue;
+      }
     }
 
+    if (!usuarioInfo) {
+      console.log(`[DELETE PATIENT] Paciente no encontrado con ID: ${id}`);
+      return res.status(404).json({ message: 'Paciente no encontrado', code: 'PATIENT_NOT_FOUND' });
+    }
+
+    const actualId = usuarioInfo.id;
+    const nombrePaciente = usuarioInfo.nombre;
+
+    console.log(`[DELETE PATIENT] Eliminando registros relacionados para ID: ${actualId}`);
+
+    // PASO 2: Eliminar registros relacionados en tablas que referencian al paciente
+    // Nota: Estos registros pueden referenciar por ID o por otro campo
+    
+    try {
+      await supabase.from('resenas').delete().filter('paciente_id', 'eq', actualId);
+      console.log(`[DELETE PATIENT] Reseñas eliminadas`);
+    } catch (e) {
+      console.log(`[DELETE PATIENT] Sin reseñas para eliminar o error:`, e.message);
+    }
+
+    try {
+      await supabase.from('accesos_historial').delete().filter('paciente_id', 'eq', actualId);
+      console.log(`[DELETE PATIENT] Accesos al historial eliminados`);
+    } catch (e) {
+      console.log(`[DELETE PATIENT] Sin accesos para eliminar o error:`, e.message);
+    }
+
+    try {
+      await supabase.from('citas').delete().filter('id_paciente', 'eq', actualId);
+      console.log(`[DELETE PATIENT] Citas eliminadas`);
+    } catch (e) {
+      console.log(`[DELETE PATIENT] Sin citas para eliminar o error:`, e.message);
+    }
+
+    try {
+      await supabase.from('tratamientos').delete().filter('paciente_id', 'eq', actualId);
+      console.log(`[DELETE PATIENT] Tratamientos eliminados`);
+    } catch (e) {
+      console.log(`[DELETE PATIENT] Sin tratamientos para eliminar o error:`, e.message);
+    }
+
+    try {
+      await supabase.from('pagos').delete().filter('id_paciente', 'eq', actualId);
+      console.log(`[DELETE PATIENT] Pagos eliminados`);
+    } catch (e) {
+      console.log(`[DELETE PATIENT] Sin pagos para eliminar o error:`, e.message);
+    }
+
+    // PASO 3: Eliminar el usuario (paciente) de la tabla usuarios
+    console.log(`[DELETE PATIENT] Eliminando usuario/paciente con ID: ${actualId}`);
+    const { error: deleteError } = await supabase
+      .from('usuarios')
+      .delete()
+      .filter('id', 'eq', actualId);
+
+    if (deleteError) {
+      console.error(`[DELETE PATIENT] Error al eliminar usuario:`, deleteError);
+      return res.status(500).json({ 
+        message: 'Error al eliminar paciente', 
+        code: 'DELETE_ERROR', 
+        error: deleteError.message 
+      });
+    }
+
+    console.log(`[DELETE PATIENT] Paciente/usuario eliminado exitosamente`);
     res.json({
       code: 'PATIENT_DELETED',
-      message: `Paciente ${deletedPatient?.nombre || 'sin nombre'} eliminado correctamente`,
-      patientId: id
+      message: `Paciente ${nombrePaciente} y todos sus registros relacionados han sido eliminados correctamente`,
+      patientId: actualId
     });
   } catch (err) {
+    console.error('[DELETE PATIENT] Error en deletePatient:', err);
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
 };
@@ -231,6 +337,35 @@ const getClinicalHistory = async (req, res) => {
   try {
     const { paciente_id } = req.params;
 
+    // Verificar permisos: el solicitante puede ser:
+    // - el propio paciente
+    // - un administrador (rol_id 1)
+    // - un odontólogo con acceso activo en accesos_historial
+    const requesterId = req.user?.id;
+    const requesterRolId = req.user?.rol_id;
+
+    const isSelf = requesterId === paciente_id;
+    const isAdmin = requesterRolId === 1;
+
+    if (!isSelf && !isAdmin) {
+      // Verificar si es odontólogo con acceso
+      const { data: accessRows, error: accessError } = await supabase
+        .from('accesos_historial')
+        .select('id, activo')
+        .eq('paciente_id', paciente_id)
+        .eq('odontologo_id', requesterId)
+        .eq('activo', true)
+        .limit(1);
+
+      if (accessError) {
+        return res.status(500).json({ message: 'Error verificando permisos', code: 'ACCESS_CHECK_ERROR' });
+      }
+
+      if (!accessRows || accessRows.length === 0) {
+        return res.status(403).json({ message: 'Acceso denegado al historial clínico', code: 'ACCESS_DENIED' });
+      }
+    }
+
     const { data: history, error } = await supabase
       .from('historial_clinico')
       .select('id, fecha, tipo, descripcion, diagnostico, tratamiento, medicamentos, notas, archivos, odontologo_id, created_at')
@@ -245,6 +380,95 @@ const getClinicalHistory = async (req, res) => {
       code: 'HISTORY_SUCCESS',
       history: history || []
     });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Otorgar acceso de un paciente a un odontólogo (solo el paciente o admin puede hacerlo)
+const grantAccess = async (req, res) => {
+  try {
+    const { paciente_id } = req.params;
+    const { odontologo_id } = req.body;
+    const requesterId = req.user.id;
+    const requesterRolId = req.user.rol_id;
+
+    // Solo el paciente (dueño) o admin puede otorgar
+    if (requesterId !== paciente_id && requesterRolId !== 1) {
+      return res.status(403).json({ message: 'No autorizado para otorgar acceso', code: 'NOT_AUTHORIZED' });
+    }
+
+    if (!odontologo_id) {
+      return res.status(400).json({ message: 'odontologo_id es requerido', code: 'MISSING_FIELD' });
+    }
+
+    const { data, error } = await supabase
+      .from('accesos_historial')
+      .upsert([
+        { paciente_id, odontologo_id, otorgado_por: requesterId, activo: true, revocado_en: null }
+      ], { onConflict: ['paciente_id', 'odontologo_id'] })
+      .select('*');
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al otorgar acceso', error: error.message, code: 'GRANT_ERROR' });
+    }
+
+    res.json({ code: 'ACCESS_GRANTED', access: data[0] });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Revocar acceso
+const revokeAccess = async (req, res) => {
+  try {
+    const { paciente_id, odontologoId } = req.params;
+    const requesterId = req.user.id;
+    const requesterRolId = req.user.rol_id;
+
+    if (requesterId !== paciente_id && requesterRolId !== 1) {
+      return res.status(403).json({ message: 'No autorizado para revocar acceso', code: 'NOT_AUTHORIZED' });
+    }
+
+    const { data, error } = await supabase
+      .from('accesos_historial')
+      .update({ activo: false, revocado_en: new Date().toISOString() })
+      .eq('paciente_id', paciente_id)
+      .eq('odontologo_id', odontologoId)
+      .select('*');
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al revocar acceso', error: error.message, code: 'REVOKE_ERROR' });
+    }
+
+    res.json({ code: 'ACCESS_REVOKED', revoked: data[0] || null });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// Listar accesos para un paciente
+const listAccesses = async (req, res) => {
+  try {
+    const { paciente_id } = req.params;
+    const requesterId = req.user.id;
+    const requesterRolId = req.user.rol_id;
+
+    if (requesterId !== paciente_id && requesterRolId !== 1) {
+      return res.status(403).json({ message: 'No autorizado para ver accesos', code: 'NOT_AUTHORIZED' });
+    }
+
+    const { data, error } = await supabase
+      .from('accesos_historial')
+      .select('id, odontologo_id, otorgado_por, otorgado_en, revocado_en, activo, odontologo:odontologo_id(id, nombre, apellido, foto_perfil)')
+      .eq('paciente_id', paciente_id)
+      .order('otorgado_en', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al listar accesos', error: error.message, code: 'LIST_ACCESS_ERROR' });
+    }
+
+    res.json({ code: 'ACCESSES_SUCCESS', accesses: data || [] });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
@@ -411,4 +635,7 @@ module.exports = {
   addClinicalRecord,
   generateClinicalHistoryPDF,
   generateTreatmentSummaryPDF,
+  grantAccess,
+  revokeAccess,
+  listAccesses,
 };

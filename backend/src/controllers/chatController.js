@@ -243,7 +243,7 @@ const getChatContacts = async (req, res) => {
 
     const { data: users, error: usersError } = await supabase
       .from('usuarios')
-      .select('id, nombre, correo, rol_id, activo, foto_perfil, roles:rol_id(id, nombre)')
+      .select('id, nombre, correo, rol_id, activo, foto_perfil, biografia, roles:rol_id(id, nombre)')
       .neq('id', currentUserId)
       .eq('activo', true)
       .order('nombre', { ascending: true });
@@ -292,6 +292,7 @@ const getChatContacts = async (req, res) => {
         correo: user.correo,
         rol: user.roles?.nombre || rolIdToName(user.rol_id),
         foto_perfil: user.foto_perfil,
+        biografia: user.biografia || null,
         last_message: lastMessage?.mensaje ?? '',
         last_message_at: lastMessage?.fecha ?? null,
         mensajes_no_leidos: unreadCount,

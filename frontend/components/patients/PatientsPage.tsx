@@ -95,8 +95,21 @@ export default function PatientsPage() {
       await apiClient.deletePatient(patientToDelete.id);
       setPatients((prev) => prev.filter((p) => p.id !== patientToDelete.id));
       setPatientToDelete(null);
+      setFormError(''); // Limpiar error si lo había
     } catch (err: any) {
-      alert(`Error al eliminar paciente: ${err.message ?? 'Error desconocido'}`);
+      const errorMsg = err.message ?? 'Error desconocido';
+      console.error('Error al eliminar paciente:', err);
+      
+      // Mostrar mensaje de error más descriptivo
+      let userMessage = `Error al eliminar paciente: ${errorMsg}`;
+      
+      if (errorMsg.includes('DELETE_ERROR_RELATED')) {
+        userMessage = 'El paciente tiene datos relacionados (citas, tratamientos, etc.). Se han eliminado todos los registros asociados. Si el problema persiste, intente nuevamente.';
+      } else if (errorMsg.includes('PATIENT_NOT_FOUND')) {
+        userMessage = 'El paciente no fue encontrado.';
+      }
+      
+      setFormError(userMessage);
     } finally { setDeletingPatient(false); }
   };
 
