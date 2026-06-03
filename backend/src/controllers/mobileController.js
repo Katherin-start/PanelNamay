@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
 const supabaseAuth = require('../config/supabaseAuth');
 const jwt = require('jsonwebtoken');
+const { getIO } = require('../socket/chatSocket');
 
 // Registro para clientes móviles (siempre paciente, rol_id = 6)
 const mobileRegister = async (req, res) => {
@@ -401,6 +402,231 @@ const getMyReviews = async (req, res) => {
   }
 };
 
+// Crear cita móvil junto con el pago inicial y QR para el método elegido
+const createMobileAppointment = async (req, res) => {
+  try {
+    const {
+      fecha,
+      hora,
+      fecha_hora,
+      id_odontologo,
+      metodo_pago = 'Yape',
+      monto,
+      servicio,
+      descripcion,
+    } = req.body;
+
+    if ((!fecha || !hora) && !fecha_hora) {
+      return res.status(400).json({ message: 'Fecha y hora son requeridos', code: 'MISSING_FIELDS' });
+    }
+
+    if (!id_odontologo) {
+      return res.status(400).json({ message: 'Debe seleccionar un odontólogo', code: 'MISSING_DOCTOR' });
+    }
+
+    if (!monto) {
+      return res.status(400).json({ message: 'El monto del pago es requerido', code: 'MISSING_AMOUNT' });
+    }
+
+    let finalFecha = fecha;
+    let finalHora = hora;
+
+    if (fecha_hora && (!fecha || !hora)) {
+      const dt = new Date(fecha_hora);
+      finalFecha = dt.toISOString().split('T')[0];
+      finalHora = dt.toTimeString().substring(0, 5);
+    }
+
+    if (!finalFecha || !finalHora) {
+      return res.status(400).json({ message: 'Fecha y hora válidas son requeridas', code: 'INVALID_DATETIME' });
+    }
+
+    const { data: appointment, error: appointmentError } = await supabase
+      .from('citas')
+      .insert([
+        {
+          fecha: finalFecha,
+          hora: finalHora,
+          id_paciente: req.user.id,
+          id_odontologo,
+          estado: 'programada',
+        },
+      ])
+      .select('*')
+      .single();
+
+    if (appointmentError) {
+      return res.status(500).json({ message: 'Error al crear cita', error: appointmentError.message, code: 'APPOINTMENT_CREATE_ERROR' });
+    }
+
+
+    const { data: payment, error: paymentError } = await supabase
+      .from('pagos')
+      .insert([
+        {
+          id_paciente: req.user.id,
+          id_cita: appointment.id,
+          monto: Number(monto),
+          monto_final: Number(monto),
+          metodo_pago,
+          estado: 'pendiente',
+          estado_validacion: 'POR_CONFIRMAR',
+          fecha: finalFecha,
+          servicio: servicio ?? 'Pago de cita',
+          descripcion: descripcion ?? null,
+          qr_imagen: null,
+        },
+      ])
+      .select('*')
+      .single();
+
+    if (paymentError) {
+      await supabase.from('citas').delete().eq('id', appointment.id);
+      return res.status(500).json({ message: 'Error al crear pago', error: paymentError.message, code: 'PAYMENT_CREATE_ERROR' });
+    }
+
+    // Notificar a recepcionistas vía socket
+    try {
+      const { data: roleData } = await supabase.from('roles').select('id').eq('nombre', 'RECEPCIONISTA').single();
+      if (roleData && roleData.id) {
+        const { data: recps } = await supabase.from('usuarios').select('id').eq('rol_id', roleData.id).eq('activo', true);
+        const io = getIO();
+        (recps || []).forEach((r) => {
+          io.to(`user_${r.id}`).emit('new_appointment', { appointment, payment });
+        });
+      }
+    } catch (e) {
+      console.error('Error notificando recepcionistas:', e?.message || e);
+    }
+
+    res.status(201).json({
+      code: 'MOBILE_APPOINTMENT_CREATED',
+      appointment,
+      payment,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+const getMobileAppointmentPayment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { data, error } = await supabase
+      .from('pagos')
+      .select('*')
+      .eq('id_cita', appointmentId)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al obtener el pago de la cita', error: error.message, code: 'PAYMENT_FETCH_ERROR' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ message: 'Pago de cita no encontrado', code: 'PAYMENT_NOT_FOUND' });
+    }
+
+    res.json({ code: 'MOBILE_APPOINTMENT_PAYMENT_SUCCESS', payment: data });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+const uploadMobilePaymentProof = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se proporcionó archivo', code: 'NO_FILE' });
+    }
+
+    const { paymentId } = req.params;
+    const { data: payment, error: paymentError } = await supabase
+      .from('pagos')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
+
+    if (paymentError || !payment) {
+      return res.status(404).json({ message: 'Pago no encontrado', code: 'PAYMENT_NOT_FOUND' });
+    }
+
+    if (payment.id_paciente !== req.user.id) {
+      return res.status(403).json({ message: 'No autorizado para subir este comprobante', code: 'FORBIDDEN' });
+    }
+
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({ message: 'Solo se permiten imágenes JPEG, PNG, WebP o GIF', code: 'INVALID_FILE_TYPE' });
+    }
+
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({ message: 'El comprobante no puede exceder 10MB', code: 'FILE_TOO_LARGE' });
+    }
+
+    const fileExt = req.file.originalname.split('.').pop();
+    const fileName = `pago_${paymentId}_${Date.now()}.${fileExt}`;
+    const filePath = `payment-proofs/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('payment-proofs')
+      .upload(filePath, req.file.buffer, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: req.file.mimetype,
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ message: 'Error al subir comprobante', error: uploadError.message, code: 'UPLOAD_ERROR' });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('payment-proofs')
+      .getPublicUrl(filePath);
+
+    const comprobanteUrl = publicUrlData?.publicUrl || null;
+
+    const { data: updatedPayment, error: updateError } = await supabase
+      .from('pagos')
+      .update({
+        comprobante: comprobanteUrl,
+        estado_validacion: 'POR_CONFIRMAR',
+        estado: 'pendiente',
+      })
+      .eq('id', paymentId)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Error al actualizar el pago', error: updateError.message, code: 'PAYMENT_UPDATE_ERROR' });
+    }
+
+    // Notificar a cajeros y recepcionistas que hay un comprobante por validar
+    try {
+      const io = getIO();
+      const { data: cajeroRole } = await supabase.from('roles').select('id').eq('nombre', 'CAJERO').single();
+      const { data: recepRole } = await supabase.from('roles').select('id').eq('nombre', 'RECEPCIONISTA').single();
+
+      if (cajeroRole?.id) {
+        const { data: cajeros } = await supabase.from('usuarios').select('id').eq('rol_id', cajeroRole.id).eq('activo', true);
+        (cajeros || []).forEach((c) => io.to(`user_${c.id}`).emit('payment_proof_uploaded', { payment: updatedPayment }));
+      }
+
+      if (recepRole?.id) {
+        const { data: recps } = await supabase.from('usuarios').select('id').eq('rol_id', recepRole.id).eq('activo', true);
+        (recps || []).forEach((r) => io.to(`user_${r.id}`).emit('payment_proof_uploaded', { payment: updatedPayment }));
+      }
+
+      // Notificar al paciente que su comprobante fue recibido
+      io.to(`user_${req.user.id}`).emit('payment_proof_received', { payment: updatedPayment });
+    } catch (e) {
+      console.error('Error notificando roles tras comprobante:', e?.message || e);
+    }
+
+    res.json({ code: 'PAYMENT_PROOF_UPLOADED', payment: updatedPayment });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 // Subir foto de perfil desde app móvil
 const uploadMobileProfilePhoto = async (req, res) => {
   try {
@@ -554,6 +780,9 @@ module.exports = {
   getMobileDoctorById,
   createReview,
   getMyReviews,
+  createMobileAppointment,
+  getMobileAppointmentPayment,
+  uploadMobilePaymentProof,
   uploadMobileProfilePhoto,
   getMobileDiscounts,
 };

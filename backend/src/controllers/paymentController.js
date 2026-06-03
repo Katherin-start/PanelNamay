@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const PDFDocument = require('pdfkit');
+const { getIO } = require('../socket/chatSocket');
 
 const normalizeAmount = (value) => {
   const amount = Number(value);
@@ -22,6 +23,8 @@ const createPayment = async (req, res) => {
       descuento_id,
       servicio,
       descripcion,
+      id_cita,
+      qr_imagen,
     } = req.body;
 
     if (!monto) {
@@ -66,6 +69,7 @@ const createPayment = async (req, res) => {
 
     const payload = {
       id_paciente: req.user.id,
+      id_cita: id_cita || null,
       monto: normalizedMonto,
       monto_descuento,
       monto_final,
@@ -75,9 +79,11 @@ const createPayment = async (req, res) => {
       descuento_valor: descuentoData?.valor || null,
       metodo_pago: metodo_pago || metodo || 'Yape',
       estado,
+      estado_validacion: 'POR_CONFIRMAR',
       fecha: fecha || fecha_pago || new Date().toISOString().split('T')[0],
       servicio: servicio ?? null,
       descripcion: descripcion ?? null,
+      qr_imagen: qr_imagen || null,
     };
 
     const { data, error } = await supabase.from('pagos').insert([payload]).select('*').single();
@@ -94,7 +100,7 @@ const createPayment = async (req, res) => {
 
 const listPayments = async (req, res) => {
   try {
-    const { patientId, status, startDate, endDate } = req.query;
+    const { patientId, status, validationStatus, startDate, endDate } = req.query;
     let query = supabase.from('pagos').select('*, pacientes:id_paciente(nombre)');
 
     if (patientId) {
@@ -103,6 +109,10 @@ const listPayments = async (req, res) => {
 
     if (status) {
       query = query.eq('estado', status);
+    }
+
+    if (validationStatus) {
+      query = query.eq('estado_validacion', validationStatus);
     }
 
     if (startDate) {
@@ -162,6 +172,145 @@ const getPaymentDetails = async (req, res) => {
     }
 
     res.json({ code: 'PAYMENT_DETAILS_SUCCESS', payment: data });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+const validatePayment = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { estado_validacion } = req.body;
+
+    if (!estado_validacion) {
+      return res.status(400).json({ message: 'estado_validacion es requerido', code: 'MISSING_VALIDATION_STATUS' });
+    }
+
+    const normalizedStatus = String(estado_validacion).trim().toUpperCase();
+    if (!['POR_CONFIRMAR', 'APROBADO', 'RECHAZADO'].includes(normalizedStatus)) {
+      return res.status(400).json({ message: 'Estado de validación inválido', code: 'INVALID_VALIDATION_STATUS' });
+    }
+
+    const updates = {
+      estado_validacion: normalizedStatus,
+      validado_por: normalizedStatus === 'POR_CONFIRMAR' ? null : req.user.id,
+      fecha_validacion: normalizedStatus === 'POR_CONFIRMAR' ? null : new Date().toISOString(),
+    };
+
+    if (normalizedStatus === 'APROBADO') {
+      updates.estado = 'pagado';
+    } else if (normalizedStatus === 'RECHAZADO') {
+      updates.estado = 'rechazado';
+    } else {
+      updates.estado = 'pendiente';
+    }
+
+    const { data, error } = await supabase
+      .from('pagos')
+      .update(updates)
+      .eq('id', paymentId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al actualizar validación del pago', error: error.message, code: 'PAYMENT_VALIDATION_ERROR' });
+    }
+
+    // Si el pago pertenece a una cita, actualizar estado de la cita
+    try {
+      if (data?.id_cita) {
+        const citaUpdates = {};
+        if (normalizedStatus === 'APROBADO') citaUpdates.estado = 'confirmada';
+        else if (normalizedStatus === 'RECHAZADO') citaUpdates.estado = 'pendiente';
+
+        if (Object.keys(citaUpdates).length > 0) {
+          await supabase.from('citas').update(citaUpdates).eq('id', data.id_cita);
+        }
+      }
+
+      // Notificar via socket: recepcionistas y paciente
+      const io = getIO();
+      const { data: recpRole } = await supabase.from('roles').select('id').eq('nombre', 'RECEPCIONISTA').single();
+      if (recpRole?.id) {
+        const { data: recps } = await supabase.from('usuarios').select('id').eq('rol_id', recpRole.id).eq('activo', true);
+        (recps || []).forEach((r) => io.to(`user_${r.id}`).emit('payment_validated', { payment: data }));
+      }
+
+      // Notificar al paciente
+      if (data?.id_paciente) {
+        io.to(`user_${data.id_paciente}`).emit('payment_validated', { payment: data });
+      }
+    } catch (e) {
+      console.error('Error al propagar validación del pago:', e?.message || e);
+    }
+
+    res.json({ code: 'PAYMENT_VALIDATED', payment: data });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+const assignPaymentQr = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { qr_imagen } = req.body;
+    let qrUrl = qr_imagen || null;
+
+    if (req.file) {
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Solo se permiten imágenes JPEG, PNG, WebP o GIF', code: 'INVALID_FILE_TYPE' });
+      }
+
+      const fileExt = req.file.originalname.split('.').pop();
+      const fileName = `qr_${paymentId}_${Date.now()}.${fileExt}`;
+      const filePath = `payment-qrs/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('payment-qr')
+        .upload(filePath, req.file.buffer, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: req.file.mimetype,
+        });
+
+      if (uploadError) {
+        return res.status(500).json({ message: 'Error al subir imagen QR', error: uploadError.message, code: 'UPLOAD_ERROR' });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('payment-qr')
+        .getPublicUrl(filePath);
+
+      qrUrl = publicUrlData?.publicUrl || null;
+    }
+
+    if (!qrUrl) {
+      return res.status(400).json({ message: 'Se requiere qr_imagen o archivo QR', code: 'MISSING_QR_IMAGE' });
+    }
+
+    const { data, error } = await supabase
+      .from('pagos')
+      .update({ qr_imagen: qrUrl })
+      .eq('id', paymentId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al asignar QR', error: error.message, code: 'PAYMENT_QR_ASSIGN_ERROR' });
+    }
+
+    // Notificar al paciente que hay un QR asignado
+    try {
+      const io = getIO();
+      if (data?.id_paciente) {
+        io.to(`user_${data.id_paciente}`).emit('payment_qr_assigned', { payment: data });
+      }
+    } catch (e) {
+      console.error('Error notificando QR al paciente:', e?.message || e);
+    }
+
+    res.json({ code: 'PAYMENT_QR_ASSIGNED', payment: data });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
@@ -301,6 +450,8 @@ module.exports = {
   listPayments,
   getPaymentsByPatient,
   getPaymentDetails,
+  validatePayment,
+  assignPaymentQr,
   generateCashBoxReport,
   generatePaymentReceipt,
   generateInvoiceReport,
