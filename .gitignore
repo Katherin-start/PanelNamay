@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 *.tsbuildinfo
 .next/
 .commandcode/
@@ -7,4 +7,17 @@ build/
 .env
 .env.local
 .env.*
-3
+
+# Logs y archivos temporales de desarrollo
+*.log
+dev.log
+frontend-dev.log
+frontend.log
+backend-run.log
+backend.log
+
+# Documentos locales
+COMO_CREAR_PAT.md
+
+# Carpeta de screenshots local
+redesino-screenshots/
