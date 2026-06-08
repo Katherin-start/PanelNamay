@@ -1,7 +1,9 @@
-node_modules/
+﻿node_modules/
+*.tsbuildinfo
+.next/
+.commandcode/
+dist/
+build/
 .env
 .env.local
 .env.*
-dist/
-build/
-.next/

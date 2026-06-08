@@ -33,38 +33,54 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#F1F4F9' }}>
+    <div className="min-h-screen flex bg-namay-cream">
       {/* Left decorative panel */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden"
-        style={{ backgroundColor: '#1D3557' }}
-      >
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-10" style={{ backgroundColor: '#457B9D' }} />
-        <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full opacity-10" style={{ backgroundColor: '#E63946' }} />
+      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden bg-namay-navy">
+        {/* Decorative blurred circles */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-namay-steel/15 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full bg-namay-coral/20 blur-3xl" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full bg-namay-steel/10 blur-2xl" />
+
         <div className="relative z-10 text-center max-w-sm">
           {/* Logo */}
-          <div className="flex items-center justify-center mb-10">
-            <div className="bg-white rounded-2xl px-6 py-4 shadow-lg">
+          <div className="flex items-center justify-center mb-10 animate-fade-in">
+            <div className="bg-white rounded-2xl px-6 py-4 shadow-card-lg">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logonamay.png" alt="Dental Namay" className="h-14 w-auto object-contain" />
             </div>
           </div>
-          <p className="text-lg font-light text-white/70 tracking-widest mb-2">ODONTOLOGÍA INTEGRAL</p>
-          <p className="text-sm text-white/40 mb-12">Sistema de gestión para el panel administrativo de la clínica dental</p>
+
+          <p className="text-lg font-light text-white/70 tracking-[0.25em] mb-2">
+            ODONTOLOGÍA INTEGRAL
+          </p>
+          <p className="text-sm text-white/40 mb-12">
+            Sistema de gestión para el panel administrativo de la clínica dental
+          </p>
+
           <div className="space-y-4 text-left">
             {[
               'Gestión completa de pacientes',
               'Control de citas y agendamiento',
               'Facturación y pagos integrados',
               'Reportes y estadísticas en tiempo real',
-            ].map((text) => (
-              <div key={text} className="flex items-center gap-3">
-                <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E63946' }}>
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            ].map((text, i) => (
+              <div
+                key={text}
+                className="flex items-center gap-3 animate-fade-in"
+                style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'backwards' }}
+              >
+                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-namay-coral shadow-coral">
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path
+                      d="M2 6l3 3 5-5"
+                      stroke="white"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </span>
-                <span className="text-sm text-white/60">{text}</span>
+                <span className="text-sm text-white/70">{text}</span>
               </div>
             ))}
           </div>
@@ -76,21 +92,23 @@ export default function LoginForm() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center justify-center mb-8 lg:hidden">
-            <div className="bg-white rounded-xl px-4 py-2.5 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl px-4 py-2.5 shadow-card border border-gray-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logonamay.png" alt="Dental Namay" className="h-14 w-auto object-contain" />
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#1D3557' }}>Bienvenido</h2>
-              <p className="text-sm mt-1" style={{ color: '#457B9D' }}>Ingresa tus credenciales para acceder al panel</p>
+          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8 animate-fade-in">
+            <div className="mb-7">
+              <h2 className="text-2xl font-bold tracking-tight text-namay-navy">Bienvenido</h2>
+              <p className="text-sm mt-1.5 text-namay-steel">
+                Ingresa tus credenciales para acceder al panel
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1.5" style={{ color: '#1D3557' }}>
+                <label htmlFor="email" className="block text-sm font-semibold mb-1.5 text-namay-navy">
                   Correo electrónico
                 </label>
                 <input
@@ -100,14 +118,22 @@ export default function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="tu@email.com"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:bg-white transition-all"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-1.5" style={{ color: '#1D3557' }}>
-                  Contraseña
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="password" className="block text-sm font-semibold text-namay-navy">
+                    Contraseña
+                  </label>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-namay-steel hover:text-namay-coral transition-colors"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     id="password"
@@ -116,12 +142,13 @@ export default function LoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="••••••••"
-                    className="w-full px-4 py-2.5 pr-10 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:bg-white transition-all"
+                    className="input-base pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-namay-steel transition-colors"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? (
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,7 +165,7 @@ export default function LoginForm() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ backgroundColor: '#FEF2F2', color: '#E63946' }}>
+                <div className="flex items-center gap-2 p-3 rounded-btn text-sm bg-danger-50 text-danger-600 border border-danger-100">
                   <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -146,12 +173,7 @@ export default function LoginForm() {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#1D3557' }}
-              >
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3">
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -160,12 +182,14 @@ export default function LoginForm() {
                     </svg>
                     Iniciando sesión...
                   </span>
-                ) : 'Iniciar Sesión'}
+                ) : (
+                  'Iniciar Sesión'
+                )}
               </button>
             </form>
           </div>
 
-          <p className="text-center text-xs mt-6" style={{ color: '#457B9D' }}>
+          <p className="text-center text-xs mt-6 text-namay-steel">
             © 2026 Dental Namay · Odontología Integral
           </p>
         </div>

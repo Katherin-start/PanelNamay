@@ -10,7 +10,7 @@ import {
   MagnifyingGlassIcon,
   PaperClipIcon,
   CheckIcon,
-  ChecksIcon,
+  CheckIcon as ChecksIcon,
   TrashIcon,
   EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
@@ -239,7 +239,7 @@ export default function ChatPage() {
       
       // Si es el contacto seleccionado, actualizar su estado en el header
       if (selectedContactRef.current?.id === data.userId) {
-        setSelectedContact((prev) => ({
+        setSelectedContact((prev: any) => ({
           ...prev,
           online: data.online,
           last_seen: data.lastSeen || data.timestamp,
@@ -489,7 +489,7 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#457B9D] border-t-[#E63946]" />
+        <div className="spinner-namay" />
       </div>
     );
   }

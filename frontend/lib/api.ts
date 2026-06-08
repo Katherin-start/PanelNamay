@@ -585,7 +585,7 @@ class ApiClient {
       return await this.request('/setup/health');
     } catch (error) {
       console.warn('Error al verificar salud del sistema:', error);
-      return { code: 'HEALTH_ERROR', error: error.message };
+      return { code: 'HEALTH_ERROR', error: error instanceof Error ? error.message : 'Error desconocido' };
     }
   }
 }
