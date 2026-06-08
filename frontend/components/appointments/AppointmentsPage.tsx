@@ -8,7 +8,6 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   UserIcon,
-  XMarkIcon,
   ClockIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
@@ -117,10 +116,10 @@ export default function AppointmentsPage() {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Gestión de Citas"
-        title="Citas Médicas"
+        eyebrow="Gestión clínica"
+        title="Citas médicas"
         subtitle="Gestiona y programa las citas de los pacientes."
         action={
           <button
@@ -128,31 +127,36 @@ export default function AppointmentsPage() {
             className="btn-primary"
           >
             <PlusIcon className="h-4 w-4" />
-            Nueva Cita
+            Nueva cita
           </button>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Citas',  value: stats.total,       color: '#1D3557' },
-          { label: 'Citas Hoy',    value: stats.hoy,         color: '#457B9D' },
-          { label: 'Pendientes',   value: stats.pendientes,  color: '#F59E0B' },
-          { label: 'Completadas',  value: stats.completadas, color: '#16A34A' },
-        ].map((s) => (
-          <div key={s.label} className="card-base p-4">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.1em]">{s.label}</p>
-            <p className="text-3xl font-bold mt-1.5 text-namay-navy tabular" style={{ color: s.color }}>{s.value}</p>
-          </div>
-        ))}
+      {/* Stats — hairline grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Total citas</p>
+          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">{stats.total}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas hoy</p>
+          <p className="mt-3 text-3xl font-medium text-namay-steel tabular">{stats.hoy}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Pendientes</p>
+          <p className="mt-3 text-3xl font-medium text-namay-coral tabular">{stats.pendientes}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Completadas</p>
+          <p className="mt-3 text-3xl font-medium text-success-600 tabular">{stats.completadas}</p>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="card-base overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
+      <div className="bg-white border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center gap-4">
           <div className="relative flex-1 min-w-48">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
             <input
               type="text"
               placeholder="Buscar cita, paciente o doctor..."
@@ -161,15 +165,15 @@ export default function AppointmentsPage() {
               className="input-search"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
             {['todos', 'pendiente', 'confirmada', 'completada', 'cancelada'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-btn capitalize transition-all duration-150 ${
+                className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors ${
                   filter === f
-                    ? 'bg-namay-navy text-white shadow-card'
-                    : 'text-gray-500 bg-gray-100 hover:bg-gray-200'
+                    ? 'text-namay-coral border-b-2 border-namay-coral'
+                    : 'text-namay-steel/60 border-b-2 border-transparent hover:text-namay-navy'
                 }`}
               >
                 {filterLabels[f]}
@@ -181,43 +185,43 @@ export default function AppointmentsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-namay-cream">
+              <tr>
                 <th className="table-header">Paciente</th>
                 <th className="table-header">Doctor</th>
                 <th className="table-header">Servicio</th>
                 <th className="table-header">Fecha</th>
                 <th className="table-header">Estado</th>
-                <th className="table-header">Acciones</th>
+                <th className="table-header text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-400 text-sm">
+                  <td colSpan={6} className="text-center py-14 text-sm text-namay-steel/40 font-medium">
                     No se encontraron citas
                   </td>
                 </tr>
               ) : (
                 filtered.map((apt) => (
-                  <tr key={apt.id} className="hover:bg-namay-cream/50 transition-colors">
+                  <tr key={apt.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="table-cell">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold bg-namay-steel">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 bg-namay-navy">
                           {apt.paciente_nombre?.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-sm font-medium text-namay-navy">{apt.paciente_nombre}</span>
+                        <span className="text-sm font-semibold text-namay-navy">{apt.paciente_nombre}</span>
                       </div>
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <UserIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="flex items-center gap-1.5 text-sm text-namay-steel font-medium">
+                        <UserIcon className="h-3.5 w-3.5 text-namay-steel/40" />
                         {apt.doctor_nombre}
                       </div>
                     </td>
-                    <td className="table-cell text-sm text-gray-600">{apt.servicio}</td>
+                    <td className="table-cell text-sm text-namay-steel font-medium">{apt.servicio}</td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="flex items-center gap-1.5 text-sm text-namay-steel font-medium tabular">
+                        <CalendarIcon className="h-3.5 w-3.5 text-namay-steel/40" />
                         {new Date(apt.fecha_hora).toLocaleDateString('es-PE', {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
@@ -227,10 +231,10 @@ export default function AppointmentsPage() {
                       <StatusBadge status={apt.estado} kind="appointment" />
                     </td>
                     <td className="table-cell">
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5 justify-end">
                         <button
                           onClick={() => { setEditAppt(apt); setEditForm({ estado: apt.estado, fecha_hora: apt.fecha_hora, paciente_id: apt.paciente_id, doctor_id: apt.doctor_id }); setFormError(''); }}
-                          className="btn-steel"
+                          className="btn-secondary !py-1.5 !text-[11px] !px-3"
                         >
                           Editar
                         </button>
@@ -250,9 +254,9 @@ export default function AppointmentsPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
-              Mostrando <span className="font-semibold text-namay-navy">{filtered.length}</span> de {appointments.length} citas
+          <div className="px-6 py-3 border-t border-gray-100">
+            <p className="text-[11px] font-medium text-namay-steel/60 uppercase tracking-[0.15em] tabular">
+              Mostrando <span className="text-namay-navy font-semibold">{filtered.length}</span> de {appointments.length} citas
             </p>
           </div>
         )}
@@ -263,29 +267,29 @@ export default function AppointmentsPage() {
     <Modal
       open={showNew}
       onClose={() => setShowNew(false)}
-      title="Nueva Cita"
-      icon={<PlusIcon className="h-5 w-5 text-white" />}
+      title="Nueva cita"
+      icon={<PlusIcon className="h-4 w-4 text-namay-navy" />}
       size="lg"
       footer={
         <ModalActions
           onCancel={() => setShowNew(false)}
           onConfirm={() => document.getElementById('new-appt-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
-          confirmLabel={saving ? 'Guardando...' : 'Crear Cita'}
+          confirmLabel={saving ? 'Guardando...' : 'Crear cita'}
           loading={saving}
         />
       }
     >
-      <form id="new-appt-form" onSubmit={handleCreateAppt} className="space-y-4">
+      <form id="new-appt-form" onSubmit={handleCreateAppt} className="space-y-5">
         {formError && (
-          <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+          <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
             {formError}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="label-base">Paciente <span className="text-namay-coral">*</span></label>
             <select value={form.paciente_id} onChange={(e) => setForm({ ...form, paciente_id: e.target.value })}
-              className="input-base bg-white" required>
+              className="input-underline bg-white" required>
               <option value="">Seleccionar paciente...</option>
               {patients.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
@@ -293,7 +297,7 @@ export default function AppointmentsPage() {
           <div>
             <label className="label-base">Odontólogo</label>
             <select value={form.doctor_id} onChange={(e) => setForm({ ...form, doctor_id: e.target.value })}
-              className="input-base bg-white">
+              className="input-underline bg-white">
               <option value="">Sin asignar</option>
               {doctors.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
             </select>
@@ -301,7 +305,7 @@ export default function AppointmentsPage() {
           <div>
             <label className="label-base">Estado</label>
             <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as Appointment['estado'] })}
-              className="input-base bg-white">
+              className="input-underline bg-white">
               {['programada','pendiente','confirmada','completada','cancelada'].map((s) => (
                 <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
@@ -310,7 +314,7 @@ export default function AppointmentsPage() {
           <div>
             <label className="label-base">Fecha y hora <span className="text-namay-coral">*</span></label>
             <input type="datetime-local" value={form.fecha_hora} onChange={(e) => setForm({ ...form, fecha_hora: e.target.value })}
-              className="input-base" required />
+              className="input-underline" required />
           </div>
         </div>
       </form>
@@ -320,9 +324,9 @@ export default function AppointmentsPage() {
     <Modal
       open={!!viewAppt}
       onClose={() => setViewAppt(null)}
-      title="Detalle de Cita"
+      title="Detalle de cita"
       variant="info"
-      icon={<CalendarIcon className="h-5 w-5 text-white" />}
+      icon={<CalendarIcon className="h-4 w-4 text-namay-navy" />}
       footer={
         <button onClick={() => setViewAppt(null)} className="btn-cancel w-full">
           Cerrar
@@ -330,7 +334,7 @@ export default function AppointmentsPage() {
       }
     >
       {viewAppt && (
-        <div className="space-y-3">
+        <div className="space-y-0">
           {[
             { label: 'Paciente',  value: viewAppt.paciente_nombre },
             { label: 'Doctor',    value: viewAppt.doctor_nombre || '—' },
@@ -339,11 +343,11 @@ export default function AppointmentsPage() {
             { label: 'Estado',    value: viewAppt.estado?.toUpperCase() },
             { label: 'Notas',     value: viewAppt.notas || 'Sin notas' },
           ].map(({ label, value }) => (
-            <div key={label} className="flex items-start gap-3 p-3 rounded-btn bg-namay-cream/60">
-              <DocumentTextIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-namay-steel" />
+            <div key={label} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
+              <DocumentTextIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-namay-steel/60" strokeWidth={1.5} />
               <div className="min-w-0">
-                <p className="text-[10px] text-gray-400 uppercase tracking-[0.1em] font-semibold">{label}</p>
-                <p className="text-sm font-medium mt-0.5 text-namay-navy">{value}</p>
+                <p className="text-[10px] font-semibold text-namay-steel/60 uppercase tracking-[0.2em]">{label}</p>
+                <p className="text-sm font-medium text-namay-navy mt-1">{value}</p>
               </div>
             </div>
           ))}
@@ -355,29 +359,29 @@ export default function AppointmentsPage() {
     <Modal
       open={!!editAppt}
       onClose={() => setEditAppt(null)}
-      title="Editar Cita"
+      title="Editar cita"
       subtitle={editAppt?.paciente_nombre}
-      icon={<ClockIcon className="h-5 w-5 text-white" />}
+      icon={<ClockIcon className="h-4 w-4 text-namay-navy" />}
       footer={
         <ModalActions
           onCancel={() => setEditAppt(null)}
           onConfirm={() => document.getElementById('edit-appt-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
-          confirmLabel={saving ? 'Guardando...' : 'Guardar Cambios'}
+          confirmLabel={saving ? 'Guardando...' : 'Guardar cambios'}
           loading={saving}
         />
       }
     >
-      <form id="edit-appt-form" onSubmit={handleSaveEdit} className="space-y-4">
+      <form id="edit-appt-form" onSubmit={handleSaveEdit} className="space-y-5">
         {formError && (
-          <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+          <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
             {formError}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="label-base">Estado</label>
             <select value={editForm.estado ?? ''} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value as any })}
-              className="input-base bg-white">
+              className="input-underline bg-white">
               {['pendiente','confirmada','completada','cancelada'].map((s) => (
                 <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
@@ -386,7 +390,7 @@ export default function AppointmentsPage() {
           <div>
             <label className="label-base">Fecha y hora</label>
             <input type="datetime-local" value={editForm.fecha_hora ?? ''} onChange={(e) => setEditForm({ ...editForm, fecha_hora: e.target.value })}
-              className="input-base" />
+              className="input-underline" />
           </div>
         </div>
       </form>

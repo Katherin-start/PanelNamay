@@ -25,10 +25,10 @@ const SIZE_MAP = {
   lg: 'max-w-lg',
 };
 
-const VARIANT_STYLES: Record<ModalVariant, { bg: string; text: string; ring: string }> = {
-  default: { bg: 'bg-namay-navy',  text: 'text-white',  ring: 'ring-white/20' },
-  danger:  { bg: 'bg-namay-coral', text: 'text-white',  ring: 'ring-white/30' },
-  info:    { bg: 'bg-namay-steel', text: 'text-white',  ring: 'ring-white/20' },
+const VARIANT_STYLES: Record<ModalVariant, { accent: string }> = {
+  default: { accent: 'text-namay-navy' },
+  danger:  { accent: 'text-namay-coral' },
+  info:    { accent: 'text-namay-navy' },
 };
 
 export default function Modal({
@@ -62,35 +62,35 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-namay-navy/55 backdrop-blur-[2px] animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-namay-navy/30 animate-fade-in"
       onClick={(e) => {
         if (closeOnOverlay && e.target === e.currentTarget) onClose();
       }}
     >
       <div
         className={cn(
-          'bg-white rounded-2xl shadow-modal w-full overflow-hidden animate-scale-in',
+          'bg-white border border-gray-100 w-full overflow-hidden animate-scale-in',
           SIZE_MAP[size],
         )}
       >
-        {/* Header */}
-        <div className={cn('flex items-center gap-3 px-6 py-4', v.bg)}>
+        {/* Header — plano, sin gradientes */}
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
           {icon && (
-            <div className={cn('w-10 h-10 rounded-xl bg-white/15 ring-1 flex items-center justify-center flex-shrink-0', v.ring)}>
+            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-namay-navy border border-gray-100">
               {icon}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-white truncate">{title}</h2>
-            {subtitle && <p className="text-xs text-white/70 truncate mt-0.5">{subtitle}</p>}
+            <h2 className={cn('text-base font-semibold truncate', v.accent)}>{title}</h2>
+            {subtitle && <p className="text-[11px] text-namay-steel/60 font-medium truncate mt-0.5 tracking-wide">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+            className="p-1.5 text-namay-steel/40 hover:text-namay-navy transition-colors flex-shrink-0"
             aria-label="Cerrar"
           >
-            <XMarkIcon className="h-5 w-5" />
+            <XMarkIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -99,7 +99,7 @@ export default function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 pb-5 pt-2 border-t border-gray-100 bg-gray-50/50">
+          <div className="px-6 py-4 border-t border-gray-100">
             {footer}
           </div>
         )}
@@ -138,11 +138,8 @@ export function ModalActions({
           onClick={onConfirm}
           disabled={loading}
           className={cn(
-            'flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-btn transition-all duration-150',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-            confirmVariant === 'danger'
-              ? 'bg-namay-coral hover:bg-namay-coral/90 shadow-coral'
-              : 'bg-namay-coral hover:bg-namay-coral/90 shadow-coral',
+            'btn-primary flex-1',
+            confirmVariant === 'danger' && '!bg-namay-coral hover:!bg-namay-coral/90',
           )}
         >
           {loading ? (loadingLabel ?? 'Guardando...') : confirmLabel}

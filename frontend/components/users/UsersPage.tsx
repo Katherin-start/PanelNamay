@@ -100,19 +100,12 @@ export default function UsersPage() {
     );
   }
 
-  const stats = [
-    { label: 'Total Usuarios',    value: users.length,    color: '#1D3557', light: '#EFF6FF' },
-    { label: 'Activos',           value: totalActivos,    color: '#16A34A', light: '#F0FDF4' },
-    { label: 'Inactivos',         value: totalInactivos,  color: '#DC2626', light: '#FEF2F2' },
-    { label: 'Administradores',   value: totalAdmins,     color: '#7C3AED', light: '#EDE9FE' },
-  ];
-
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Usuarios"
-        title="Gestión de Usuarios"
+        eyebrow="Administración"
+        title="Gestión de usuarios"
         subtitle="Administra los usuarios y roles del sistema."
         action={
           <button
@@ -120,37 +113,41 @@ export default function UsersPage() {
             className="btn-primary"
           >
             <UserPlusIcon className="h-4 w-4" />
-            Nuevo Usuario
+            Nuevo usuario
           </button>
         }
       />
 
       {formError && (
-        <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+        <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
           {formError}
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="card-base p-4">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center mb-2.5"
-              style={{ backgroundColor: s.light }}
-            >
-              <ShieldCheckIcon className="h-4 w-4" style={{ color: s.color }} />
-            </div>
-            <p className="text-xl font-bold text-namay-navy tabular" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
+      {/* Stats — hairline grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Total usuarios</p>
+          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">{users.length}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Activos</p>
+          <p className="mt-3 text-3xl font-medium text-success-600 tabular">{totalActivos}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Inactivos</p>
+          <p className="mt-3 text-3xl font-medium text-danger-600 tabular">{totalInactivos}</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Administradores</p>
+          <p className="mt-3 text-3xl font-medium text-namay-coral tabular">{totalAdmins}</p>
+        </div>
       </div>
 
       {/* Search */}
-      <div className="card-base p-4">
-        <div className="relative max-w-xs">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <div className="bg-white border border-gray-100 px-6 py-4">
+        <div className="relative max-w-sm">
+          <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
           <input
             type="text"
             value={search}
@@ -162,28 +159,28 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="card-base overflow-hidden">
+      <div className="bg-white border border-gray-100">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-namay-cream">
+              <tr>
                 <th className="table-header">Usuario</th>
                 <th className="table-header">Rol</th>
                 <th className="table-header">Estado</th>
-                <th className="table-header">Último Acceso</th>
-                <th className="table-header">Acciones</th>
+                <th className="table-header">Último acceso</th>
+                <th className="table-header text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-gray-400">
+                  <td colSpan={5} className="text-center py-14 text-sm text-namay-steel/40 font-medium">
                     No se encontraron usuarios
                   </td>
                 </tr>
               ) : (
                 filtered.map((user) => (
-                  <tr key={user.id} className="hover:bg-namay-cream/50 transition-colors">
+                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
                         {user.foto_perfil ? (
@@ -199,8 +196,8 @@ export default function UsersPage() {
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-namay-navy">{user.nombre ?? 'Sin nombre'}</p>
-                          <p className="text-xs text-gray-400">{user.email ?? ''}</p>
+                          <p className="font-semibold text-namay-navy">{user.nombre ?? 'Sin nombre'}</p>
+                          <p className="text-[11px] text-namay-steel/60 font-medium">{user.email ?? ''}</p>
                         </div>
                       </div>
                     </td>
@@ -214,7 +211,7 @@ export default function UsersPage() {
                         showDot
                       />
                     </td>
-                    <td className="table-cell text-gray-500 text-xs">
+                    <td className="table-cell text-[11px] text-namay-steel/60 font-medium tabular">
                       {user.ultimo_acceso
                         ? new Date(user.ultimo_acceso).toLocaleDateString('es-PE', {
                             day: 'numeric', month: 'short', year: 'numeric',
@@ -222,17 +219,17 @@ export default function UsersPage() {
                         : '—'}
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 justify-end">
                         <button
                           onClick={() => { setEditUser(user); setEditForm({ nombre: user.nombre, email: user.email, rol: user.rol }); setFormError(''); }}
-                          className="p-1.5 rounded-btn hover:bg-info-50 text-namay-steel transition-colors"
+                          className="p-1.5 text-namay-steel/60 hover:text-namay-coral transition-colors"
                           title="Editar"
                         >
                           <PencilSquareIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
-                          className="p-1.5 rounded-btn hover:bg-danger-50 text-danger-500 transition-colors"
+                          className="p-1.5 text-namay-steel/60 hover:text-danger-500 transition-colors"
                           title="Eliminar"
                         >
                           <TrashIcon className="h-4 w-4" />
@@ -246,9 +243,9 @@ export default function UsersPage() {
           </table>
         </div>
         {filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
-              Mostrando <span className="font-semibold text-namay-navy">{filtered.length}</span> de {staffUsers.length} usuarios
+          <div className="px-6 py-3 border-t border-gray-100">
+            <p className="text-[11px] font-medium text-namay-steel/60 uppercase tracking-[0.15em] tabular">
+              Mostrando <span className="text-namay-navy font-semibold">{filtered.length}</span> de {staffUsers.length} usuarios
             </p>
           </div>
         )}
@@ -259,42 +256,42 @@ export default function UsersPage() {
     <Modal
       open={showNew}
       onClose={() => setShowNew(false)}
-      title="Nuevo Usuario"
-      icon={<UserPlusIcon className="h-5 w-5 text-white" />}
+      title="Nuevo usuario"
+      icon={<UserPlusIcon className="h-4 w-4 text-namay-navy" />}
       footer={
         <ModalActions
           onCancel={() => setShowNew(false)}
           onConfirm={() => document.getElementById('new-user-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
-          confirmLabel={saving ? 'Creando...' : 'Crear Usuario'}
+          confirmLabel={saving ? 'Creando...' : 'Crear usuario'}
           loading={saving}
         />
       }
     >
-      <form id="new-user-form" onSubmit={handleCreateUser} className="space-y-4">
+      <form id="new-user-form" onSubmit={handleCreateUser} className="space-y-5">
         {formError && (
-          <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+          <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
             {formError}
           </div>
         )}
         <div>
           <label className="label-base">Nombre completo <span className="text-namay-coral">*</span></label>
           <input type="text" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Ej. Dr. Juan Pérez" required className="input-base" />
+            placeholder="Ej. Dr. Juan Pérez" required className="input-underline" />
         </div>
         <div>
           <label className="label-base">Email <span className="text-namay-coral">*</span></label>
           <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="usuario@dental.com" required className="input-base" />
+            placeholder="usuario@dental.com" required className="input-underline" />
         </div>
         <div>
           <label className="label-base">Contraseña <span className="text-namay-coral">*</span></label>
           <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="Mínimo 8 caracteres" required className="input-base" />
+            placeholder="Mínimo 8 caracteres" required className="input-underline" />
         </div>
         <div>
           <label className="label-base">Rol</label>
           <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })}
-            className="input-base bg-white">
+            className="input-underline bg-white">
             {[['ADMINISTRADOR','Administrador'],['ODONTOLOGO','Odontólogo'],['RECEPCIONISTA','Recepcionista'],['CAJERO','Cajero'],['PRACTICANTE','Practicante']].map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}
@@ -307,39 +304,39 @@ export default function UsersPage() {
     <Modal
       open={!!editUser}
       onClose={() => setEditUser(null)}
-      title="Editar Usuario"
+      title="Editar usuario"
       subtitle={editUser?.email}
-      icon={<PencilSquareIcon className="h-5 w-5 text-white" />}
+      icon={<PencilSquareIcon className="h-4 w-4 text-namay-navy" />}
       variant="info"
       footer={
         <ModalActions
           onCancel={() => setEditUser(null)}
           onConfirm={() => document.getElementById('edit-user-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
-          confirmLabel={saving ? 'Guardando...' : 'Guardar Cambios'}
+          confirmLabel={saving ? 'Guardando...' : 'Guardar cambios'}
           loading={saving}
         />
       }
     >
-      <form id="edit-user-form" onSubmit={handleSaveEdit} className="space-y-4">
+      <form id="edit-user-form" onSubmit={handleSaveEdit} className="space-y-5">
         {formError && (
-          <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+          <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
             {formError}
           </div>
         )}
         <div>
           <label className="label-base">Nombre completo</label>
           <input type="text" value={editForm.nombre ?? ''} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
-            className="input-base" />
+            className="input-underline" />
         </div>
         <div>
           <label className="label-base">Email</label>
           <input type="email" value={editForm.email ?? ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-            className="input-base" />
+            className="input-underline" />
         </div>
         <div>
           <label className="label-base">Rol</label>
           <select value={editForm.rol ?? ''} onChange={(e) => setEditForm({ ...editForm, rol: e.target.value as any })}
-            className="input-base bg-white">
+            className="input-underline bg-white">
             {[['ADMINISTRADOR','Administrador'],['ODONTOLOGO','Odontólogo'],['RECEPCIONISTA','Recepcionista'],['CAJERO','Cajero'],['PRACTICANTE','Practicante']].map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}

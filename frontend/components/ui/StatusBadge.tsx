@@ -46,23 +46,52 @@ const STATUS_BY_KIND: Record<StatusKind, Record<string, StatusConfig>> = {
   generic:     {},
 };
 
+type VariantKind = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+
+const VARIANT_STYLES: Record<VariantKind, { bg: string; text: string; dot: string }> = {
+  success: { bg: '#DCFCE7', text: '#166534', dot: '#16A34A' },
+  warning: { bg: '#FEF9C3', text: '#92400E', dot: '#CA8A04' },
+  danger:  { bg: '#FEE2E2', text: '#991B1B', dot: '#DC2626' },
+  info:    { bg: '#DBEAFE', text: '#1E40AF', dot: '#2563EB' },
+  neutral: { bg: '#F1F4F9', text: '#374151', dot: '#6B7280' },
+};
+
 interface StatusBadgeProps {
-  status: string;
+  status?: string;
   kind?: StatusKind;
   config?: StatusConfig;
+  variant?: VariantKind;
   showDot?: boolean;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export default function StatusBadge({
   status,
   kind = 'generic',
   config,
+  variant,
   showDot = false,
   className,
+  children,
 }: StatusBadgeProps) {
+  if (variant) {
+    const v = VARIANT_STYLES[variant];
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full uppercase tracking-wide',
+          className,
+        )}
+        style={{ backgroundColor: v.bg, color: v.text }}
+      >
+        {children}
+      </span>
+    );
+  }
+
   const resolved =
-    config ?? STATUS_BY_KIND[kind]?.[status] ?? {
+    config ?? STATUS_BY_KIND[kind]?.[status ?? ''] ?? {
       bg: '#F1F4F9',
       text: '#374151',
       label: status,

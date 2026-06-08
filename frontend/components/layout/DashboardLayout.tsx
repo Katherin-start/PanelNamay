@@ -126,15 +126,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-namay-cream">
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-coral bg-namay-coral">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="flex flex-col items-center gap-5 animate-fade-in">
+          <div className="w-12 h-12 rounded-hair flex items-center justify-center bg-namay-navy">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
               <path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5.5 7 5 8.5 5 10C5 14 7 16.5 8.5 18.5C9.5 20 10 21 10 22H14C14 21 14.5 20 15.5 18.5C17 16.5 19 14 19 10C19 8.5 18.5 7 17.5 5.5C16.5 3.5 14.5 2 12 2Z" />
             </svg>
           </div>
           <div className="spinner-namay" />
-          <p className="text-sm font-medium text-namay-steel">Cargando...</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-namay-steel/60">Cargando</p>
         </div>
       </div>
     );
@@ -147,45 +147,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getInitials(user.nombre ?? '?');
 
   return (
-    <div className="min-h-screen flex bg-namay-cream">
-      {/* Mobile overlay */}
+    <div className="min-h-screen flex bg-white">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 lg:hidden bg-namay-navy/55 backdrop-blur-[1px] animate-fade-in"
+          className="fixed inset-0 z-40 lg:hidden bg-namay-navy/40 animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto bg-namay-navy ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-          <div className="flex-1 flex items-center">
-            <div className="bg-white rounded-xl px-3 py-2 flex items-center justify-center shadow-card-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logonamay.png"
-                alt="Dental Namay"
-                className="h-10 w-auto object-contain"
-              />
-            </div>
-          </div>
+        <div className="flex items-center justify-between px-5 py-5 border-b border-white/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logonamay.png"
+            alt="Dental Namay"
+            className="h-8 w-auto object-contain brightness-0 invert"
+          />
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white/60 hover:text-white p-1.5 ml-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="lg:hidden text-white/40 hover:text-white p-1 transition-colors"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Role badge */}
-        <div className="px-4 py-3 border-b border-white/10">
+        <div className="px-5 py-3.5 border-b border-white/10">
           <span
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.2em]"
             style={{ backgroundColor: roleCfg.bg, color: roleCfg.text }}
           >
             <ShieldCheckIcon className="h-3 w-3" />
@@ -193,8 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </span>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
@@ -202,120 +193,110 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.name}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2.5 text-sm transition-colors duration-200 ${
                   isActive
-                    ? 'bg-namay-coral text-white shadow-coral'
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                    ? 'text-namay-coral border-l-2 border-namay-coral pl-[10px]'
+                    : 'text-white/50 hover:text-white border-l-2 border-transparent pl-[10px]'
                 }`}
               >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {item.name}
+                <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+                <span className="font-light">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* User info + logout */}
-        <div className="px-3 py-4 border-t border-white/10">
+        <div className="px-3 py-4 border-t border-white/10 space-y-1">
           <button
             onClick={() => { setShowProfile(true); setSidebarOpen(false); }}
-            className="w-full flex items-center gap-3 px-3 py-2 mb-1 rounded-btn hover:bg-white/10 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors text-left"
           >
             {user.foto_perfil ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.foto_perfil}
                 alt={user.nombre}
-                className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-white/20"
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
               />
             ) : (
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-namay-coral"
-              >
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0 border border-white/20">
                 {initials}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{user.nombre}</p>
-              <p className="text-xs truncate text-white/50">{user.email}</p>
+              <p className="text-white text-sm font-light truncate">{user.nombre}</p>
+              <p className="text-[10px] truncate text-white/40">{user.email}</p>
             </div>
           </button>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 text-xs text-white/40 hover:text-white transition-colors"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            Cerrar Sesión
+            <ArrowRightOnRectangleIcon className="h-4 w-4" />
+            <span className="font-light">Cerrar Sesión</span>
           </button>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 lg:px-6 py-3 flex items-center gap-3">
-          {/* Mobile: hamburger + logo */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 lg:px-8 py-3.5 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-btn hover:bg-gray-100 transition-colors flex-shrink-0"
+            className="lg:hidden p-1.5 text-namay-navy"
           >
-            <Bars3Icon className="h-5 w-5 text-namay-navy" />
+            <Bars3Icon className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2 lg:hidden flex-shrink-0">
-            <div className="bg-white rounded-lg px-2 py-1 shadow-card border border-gray-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logonamay.png" alt="Dental Namay" className="h-7 w-auto object-contain" />
-            </div>
+          <div className="lg:hidden flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logonamay.png" alt="Dental Namay" className="h-6 w-auto object-contain" />
           </div>
 
-          {/* Search */}
-          <div className="flex-1 max-w-md hidden sm:block">
+          <div className="flex-1 max-w-sm hidden sm:block">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
               <input
                 type="text"
-                placeholder="Buscar pacientes, historial o archivos..."
+                placeholder="Buscar..."
                 className="input-search"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
-            {/* Notifications */}
             <div ref={notifRef} className="relative">
               <button
                 onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }}
-                className="relative p-2 rounded-btn hover:bg-gray-100 transition-colors"
+                className="relative p-2 text-namay-navy/70 hover:text-namay-navy transition-colors"
               >
-                <BellIcon className="h-5 w-5 text-namay-navy" />
+                <BellIcon className="h-[18px] w-[18px]" />
                 {unreadNotifs > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center bg-namay-coral shadow-coral">
+                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-1 rounded-full text-white text-[9px] font-semibold flex items-center justify-center bg-namay-coral">
                     {unreadNotifs > 9 ? '9+' : unreadNotifs}
                   </span>
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-12 w-80 bg-white rounded-card shadow-modal border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-namay-cream">
-                    <p className="text-sm font-semibold text-namay-navy">Notificaciones</p>
+                <div className="absolute right-0 top-11 w-80 bg-white border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                  <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/70">Notificaciones</p>
                     {unreadNotifs > 0 && (
-                      <span className="badge-base bg-danger-100 text-danger-600">
+                      <span className="badge-base bg-danger-100 text-danger-700">
                         {unreadNotifs} nuevas
                       </span>
                     )}
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-gray-400">Sin notificaciones</div>
+                      <div className="py-10 text-center text-[11px] uppercase tracking-[0.2em] text-gray-300">Sin notificaciones</div>
                     ) : (
                       notifications.slice(0, 8).map((n, i) => (
                         <div
                           key={n.id ?? i}
-                          className={`px-4 py-3 border-b border-gray-50 hover:bg-namay-cream/60 transition-colors ${!n.read ? 'bg-info-50/40' : ''}`}
+                          className={`px-5 py-3.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${!n.read ? 'bg-info-50/30' : ''}`}
                         >
-                          <p className="text-xs font-semibold text-namay-navy">{n.title ?? n.titulo}</p>
-                          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.message ?? n.descripcion}</p>
-                          <p className="text-[10px] text-gray-400 mt-1">
+                          <p className="text-sm font-medium text-namay-navy">{n.title ?? n.titulo}</p>
+                          <p className="text-xs text-namay-steel/70 mt-1 leading-relaxed">{n.message ?? n.descripcion}</p>
+                          <p className="text-[10px] text-gray-300 mt-1.5 tabular">
                             {n.fecha ? new Date(n.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
@@ -326,39 +307,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
 
-            {/* Profile button */}
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-                className="flex items-center gap-2 pl-2 ml-1 border-l border-gray-200 hover:bg-gray-50 rounded-btn px-2 py-1.5 transition-colors"
+                className="flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-100 hover:opacity-80 transition-opacity"
               >
                 {user.foto_perfil ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={user.foto_perfil}
                     alt={user.nombre}
-                    className="w-8 h-8 rounded-full object-cover ring-2 ring-white"
+                    className="w-7 h-7 rounded-full object-cover"
                   />
                 ) : (
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold bg-namay-navy"
-                  >
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-medium bg-namay-navy">
                     {initials}
                   </div>
                 )}
                 <div className="hidden sm:block text-left">
-                  <p className="text-xs font-semibold leading-tight text-namay-navy">
+                  <p className="text-xs font-medium leading-tight text-namay-navy">
                     {user.nombre?.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] leading-tight text-namay-steel">{roleCfg.label}</p>
+                  <p className="text-[10px] leading-tight text-namay-steel/60">{roleCfg.label}</p>
                 </div>
               </button>
 
-              {/* Profile dropdown */}
               {showProfile && (
-                <div className="absolute right-0 top-12 w-72 bg-white rounded-card shadow-modal border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                  {/* Header */}
-                  <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-br from-namay-navy to-namay-steel">
+                <div className="absolute right-0 top-11 w-72 bg-white border border-gray-100 z-50 overflow-hidden animate-fade-in">
+                  <div className="px-5 py-5 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
                         {user.foto_perfil ? (
@@ -366,31 +342,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           <img
                             src={user.foto_perfil}
                             alt={user.nombre}
-                            className="w-12 h-12 rounded-full object-cover ring-2 ring-white/30"
+                            className="w-11 h-11 rounded-full object-cover"
                           />
                         ) : (
-                          <div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ring-2 ring-white/30 bg-namay-coral"
-                          >
+                          <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-base font-medium bg-namay-navy">
                             {initials}
                           </div>
                         )}
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploadingPhoto}
-                          className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-card-md hover:bg-gray-50 disabled:opacity-50 transition-all"
+                          className="absolute bottom-0 right-0 p-1 bg-white border border-gray-100 hover:border-namay-coral disabled:opacity-50 transition-colors"
                           title="Cambiar foto de perfil"
                         >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#1D3557' }}>
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#1D3557' }}>
                             <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
                           </svg>
                         </button>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-white font-semibold text-sm truncate">{user.nombre}</p>
-                        <p className="text-white/60 text-xs truncate">{user.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-namay-navy font-medium text-sm truncate">{user.nombre}</p>
+                        <p className="text-[11px] text-namay-steel/70 truncate mt-0.5">{user.email}</p>
                         <span
-                          className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+                          className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-[0.2em]"
                           style={{ backgroundColor: roleCfg.bg, color: roleCfg.text }}
                         >
                           <ShieldCheckIcon className="h-2.5 w-2.5" />
@@ -399,35 +373,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     </div>
                   </div>
-                  {/* Info */}
                   <div className="px-5 py-3 space-y-2.5 border-b border-gray-100">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <UserCircleIcon className="h-4 w-4 flex-shrink-0 text-namay-steel" />
+                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                      <UserCircleIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{user.nombre}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <EnvelopeIcon className="h-4 w-4 flex-shrink-0 text-namay-steel" />
+                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                      <EnvelopeIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{user.email}</span>
                     </div>
                     {user.id && (
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <ShieldCheckIcon className="h-4 w-4 flex-shrink-0 text-namay-steel" />
+                      <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                        <ShieldCheckIcon className="h-3.5 w-3.5 flex-shrink-0" />
                         <span className="tabular">ID: {user.id}</span>
                       </div>
                     )}
                   </div>
-                  {/* Actions */}
-                  <div className="p-3 space-y-1">
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 rounded-btn hover:bg-namay-cream transition-colors">
-                      <KeyIcon className="h-4 w-4 text-namay-steel" />
-                      Cambiar contraseña
+                  <div className="p-2 space-y-0.5">
+                    <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-navy hover:bg-gray-50 transition-colors">
+                      <KeyIcon className="h-3.5 w-3.5 text-namay-steel/60" />
+                      <span className="font-light">Cambiar contraseña</span>
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-btn hover:bg-danger-50 transition-colors text-namay-coral"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-coral hover:bg-danger-50 transition-colors"
                     >
-                      <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                      Cerrar sesión
+                      <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
+                      <span className="font-light">Cerrar sesión</span>
                     </button>
                   </div>
                 </div>
@@ -436,13 +408,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 px-4 lg:px-8 py-6 lg:py-8">
           {children}
         </main>
       </div>
 
-      {/* Hidden file input for profile photo */}
       <input
         ref={fileInputRef}
         type="file"

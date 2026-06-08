@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/lib/api';
+import {
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
 
 interface DentistBiographyFormProps {
   onSuccess?: () => void;
@@ -17,7 +22,6 @@ export default function DentistBiographyForm({ onSuccess }: DentistBiographyForm
   const [charCount, setCharCount] = useState(0);
   const MAX_CHARS = 1000;
 
-  // Cargar biografía actual
   useEffect(() => {
     const loadBiography = async () => {
       try {
@@ -49,12 +53,11 @@ export default function DentistBiographyForm({ onSuccess }: DentistBiographyForm
 
       await apiClient.updateBiography(biografia);
       setSuccess('Biografía actualizada exitosamente');
-      
+
       if (onSuccess) {
         onSuccess();
       }
 
-      // Limpiar mensaje de éxito después de 3 segundos
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message ?? 'Error al actualizar la biografía');
@@ -71,23 +74,32 @@ export default function DentistBiographyForm({ onSuccess }: DentistBiographyForm
     }
   };
 
-  // Solo mostrar para odontólogos
   if (user?.rol !== 'ODONTOLOGO') {
     return null;
   }
 
+  const progress = Math.min(100, (charCount / MAX_CHARS) * 100);
+  const progressColor = progress > 90 ? 'bg-danger-500' : progress > 70 ? 'bg-warning-500' : 'bg-namay-coral';
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-2xl">
-      <h2 className="text-2xl font-bold mb-2" style={{ color: '#1D3557' }}>
-        Mi Biografía Profesional
-      </h2>
-      <p className="text-gray-600 text-sm mb-4">
-        Comparte información sobre ti que los pacientes podrán ver en la aplicación móvil
-      </p>
+    <div className="card-base p-6 max-w-2xl">
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="flex-shrink-0 w-9 h-9 rounded-btn bg-namay-coral/10 flex items-center justify-center">
+            <DocumentTextIcon className="h-4 w-4 text-namay-coral" />
+          </span>
+          <h2 className="text-2xl font-bold text-namay-navy">
+            Mi Biografía Profesional
+          </h2>
+        </div>
+        <p className="text-sm text-namay-steel ml-11">
+          Comparte información sobre ti que los pacientes podrán ver en la aplicación móvil
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="biografia" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="biografia" className="label-base">
             Biografía
           </label>
           <textarea
@@ -95,33 +107,50 @@ export default function DentistBiographyForm({ onSuccess }: DentistBiographyForm
             value={biografia}
             onChange={handleChange}
             placeholder="Cuéntanos sobre tu experiencia, especialidades, y lo que te hace un gran odontólogo..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+            className="input-base resize-vertical leading-relaxed"
             rows={6}
             disabled={loading}
           />
-          <div className="text-right text-sm text-gray-500 mt-1">
-            {charCount}/{MAX_CHARS} caracteres
+          <div className="mt-2 flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 rounded-full ${progressColor}`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-xs text-namay-steel tabular font-medium">
+              {charCount}/{MAX_CHARS}
+            </span>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            ⚠️ {error}
+          <div className="flex items-center gap-2 p-3 rounded-btn bg-danger-50 border border-danger-100 text-danger-700 text-sm animate-fade-in">
+            <ExclamationCircleIcon className="h-4 w-4 flex-shrink-0" />
+            {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-            ✅ {success}
+          <div className="flex items-center gap-2 p-3 rounded-btn bg-success-50 border border-success-100 text-success-700 text-sm animate-fade-in">
+            <CheckCircleIcon className="h-4 w-4 flex-shrink-0" />
+            {success}
           </div>
         )}
 
         <button
           type="submit"
           disabled={loading || !biografia.trim()}
-          className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+          className="btn-primary w-full"
         >
-          {loading ? 'Guardando...' : 'Guardar Biografía'}
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              Guardando...
+            </>
+          ) : (
+            'Guardar Biografía'
+          )}
         </button>
       </form>
     </div>

@@ -82,6 +82,13 @@ module.exports = {
       borderRadius: {
         'card':   '0.75rem',
         'btn':    '0.5rem',
+        'hair':   '0.375rem',
+      },
+      letterSpacing: {
+        'wide-xs': '0.15em',
+        'wide-sm': '0.2em',
+        'wide-md': '0.25em',
+        'wide-lg': '0.3em',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],

@@ -15,12 +15,9 @@ import {
   ArrowTrendingUpIcon,
   ExclamationCircleIcon,
   DocumentChartBarIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
-
-// ─── Shared loading & stat card ──────────────────────────────────────
 
 function PageSpinner() {
   return (
@@ -30,20 +27,19 @@ function PageSpinner() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color, light, sub }: any) {
+function StatCard({ label, value, icon: Icon, sub, accent }: any) {
   return (
-    <div className="card-base p-5 transition-shadow duration-200 hover:shadow-card-md">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.1em]">{label}</p>
-          <p className="text-2xl font-bold mt-1.5 text-namay-navy tabular">{value}</p>
-          {sub && <p className="text-xs mt-1.5" style={{ color }}>{sub}</p>}
+    <div className="card-stat">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow">{label}</p>
+          <p className={`mt-3 text-2xl font-light tabular ${accent ? 'text-namay-coral' : 'text-namay-navy'}`}>
+            {value}
+          </p>
+          {sub && <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">{sub}</p>}
         </div>
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: light }}
-        >
-          <Icon className="h-5 w-5" style={{ color }} />
+        <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-namay-steel/50">
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </div>
       </div>
     </div>
@@ -52,73 +48,77 @@ function StatCard({ label, value, icon: Icon, color, light, sub }: any) {
 
 function StatCardDark({ label, value, sub, icon: Icon }: any) {
   return (
-    <div className="rounded-card p-5 text-white bg-gradient-to-br from-namay-navy to-namay-steel shadow-card-md">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-white/70 uppercase tracking-[0.1em]">{label}</p>
-          <p className="text-2xl font-bold mt-1.5 tabular">{value}</p>
-          {sub && <p className="text-xs mt-1.5 text-white/60">{sub}</p>}
+    <div className="card-stat bg-namay-navy border-namay-navy">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.25em]">{label}</p>
+          <p className="mt-3 text-2xl font-light text-white tabular">{value}</p>
+          {sub && <p className="text-[11px] mt-1.5 text-white/40 font-light">{sub}</p>}
         </div>
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/10 ring-1 ring-white/20">
-          <Icon className="h-5 w-5 text-white" />
+        <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-white/50">
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </div>
       </div>
     </div>
   );
 }
-
-// ─── ADMINISTRADOR ───────────────────────────────────────────────────
 
 function AdminDashboard({ metrics, alerts }: { metrics: DashboardMetrics | null; alerts: any[] }) {
   const quickActions = [
-    { label: 'Nueva Cita',        icon: CalendarIcon,       href: '/citas',     color: 'namay-coral'  },
-    { label: 'Registrar Paciente', icon: UsersIcon,         href: '/pacientes', color: 'namay-navy'   },
-    { label: 'Registrar Pago',     icon: CurrencyDollarIcon, href: '/pagos',     color: 'success-600'  },
-    { label: 'Ver Reportes',       icon: ArrowTrendingUpIcon, href: '/reportes',  color: 'namay-steel'  },
+    { label: 'Nueva Cita',         icon: CalendarIcon,       href: '/citas' },
+    { label: 'Registrar Paciente', icon: UsersIcon,          href: '/pacientes' },
+    { label: 'Registrar Pago',     icon: CurrencyDollarIcon, href: '/pagos' },
+    { label: 'Ver Reportes',       icon: ArrowTrendingUpIcon, href: '/reportes' },
   ];
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Panel · Vista General"
-        title="Dashboard Administrativo"
-      />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Pacientes"     value={metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0} icon={UsersIcon}         color="#1D3557" light="#EFF6FF" sub="+12.5% del mes pasado" />
-        <StatCard label="Citas Pendientes"    value={metrics?.citasPendientes ?? 0}                                       icon={CalendarIcon}      color="#457B9D" light="#EFF6FF" sub="Programadas para hoy" />
-        <StatCard label="Ingresos del Mes"    value={`S/ ${(metrics?.ingresosTotales ?? 0).toFixed(2)}`}                   icon={CurrencyDollarIcon} color="#16A34A" light="#F0FDF4" sub="+8.2% este mes" />
-        <StatCard label="Citas Completadas"   value={metrics?.citasCompletadas ?? 0}                                      icon={CheckCircleIcon}    color="#E63946" light="#FEF2F2" sub="Este mes" />
+    <div className="space-y-8">
+      <PageHeader eyebrow="Vista general" title="Dashboard administrativo" />
+      <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Total pacientes</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">+12.5% del mes pasado</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas pendientes</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{metrics?.citasPendientes ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Programadas para hoy</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Ingresos del mes</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">S/ {(metrics?.ingresosTotales ?? 0).toFixed(2)}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">+8.2% este mes</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas completadas</p>
+          <p className="mt-3 text-2xl font-light text-namay-coral tabular">{metrics?.citasCompletadas ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Este mes</p>
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="card-base p-5">
-          <h2 className="text-sm font-semibold mb-4 text-namay-navy">Acciones Rápidas</h2>
-          <div className="space-y-1">
-            {quickActions.map((action) => {
-              const bgColor = action.color === 'success-600' ? '#16A34A' : action.color === 'namay-coral' ? '#E63946' : action.color === 'namay-navy' ? '#1D3557' : '#457B9D';
-              return (
-                <Link
-                  key={action.label}
-                  href={action.href}
-                  className="flex items-center gap-3 p-3 rounded-btn hover:bg-namay-cream transition-colors group"
-                >
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: `${bgColor}15` }}
-                  >
-                    <action.icon className="h-4 w-4" style={{ color: bgColor }} />
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-namay-navy transition-colors">{action.label}</span>
-                </Link>
-              );
-            })}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-gray-100">
+        <div className="bg-white p-6">
+          <p className="eyebrow mb-5">Acciones rápidas</p>
+          <div className="space-y-0.5">
+            {quickActions.map((action) => (
+              <Link
+                key={action.label}
+                href={action.href}
+                className="flex items-center gap-3 px-2 py-2.5 -mx-2 hover:bg-gray-50 transition-colors group"
+              >
+                <action.icon className="h-[18px] w-[18px] text-namay-steel/60 group-hover:text-namay-coral transition-colors" strokeWidth={1.5} />
+                <span className="text-sm font-light text-namay-navy">{action.label}</span>
+                <span className="ml-auto text-namay-steel/30 group-hover:text-namay-coral transition-colors">→</span>
+              </Link>
+            ))}
           </div>
         </div>
-        <AlertsPanel alerts={alerts} />
+        <div className="lg:col-span-2 bg-white p-6">
+          <AlertsPanel alerts={alerts} />
+        </div>
       </div>
     </div>
   );
 }
-
-// ─── ODONTÓLOGO ──────────────────────────────────────────────────────
 
 function OdontologoDashboard({ metrics, appointments, alerts }: { metrics: DashboardMetrics | null; appointments: any[]; alerts: any[] }) {
   const today = new Date().toDateString();
@@ -128,38 +128,50 @@ function OdontologoDashboard({ metrics, appointments, alerts }: { metrics: Dashb
   }));
   const todayCitas = appointmentsWithDate.filter((a) => a.fecha_hora && new Date(a.fecha_hora).toDateString() === today);
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Vista General"
-        title="Panel del Odontólogo"
+        eyebrow="Vista general"
+        title="Panel del odontólogo"
         subtitle="Resumen de tu actividad clínica de hoy"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Mis Pacientes"   value={metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0} icon={UsersIcon}      color="#1D3557" light="#EFF6FF" sub="En tratamiento activo" />
-        <StatCard label="Citas Hoy"       value={todayCitas.length}                                              icon={CalendarIcon}   color="#457B9D" light="#EFF6FF" sub="Programadas para hoy" />
-        <StatCard label="Citas Completadas" value={metrics?.citasCompletadas ?? 0}                              icon={CheckCircleIcon} color="#16A34A" light="#F0FDF4" sub="Este mes" />
+      <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-3">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Mis pacientes</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">En tratamiento activo</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas hoy</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{todayCitas.length}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Programadas para hoy</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas completadas</p>
+          <p className="mt-3 text-2xl font-light text-namay-coral tabular">{metrics?.citasCompletadas ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Este mes</p>
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card-base p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-namay-navy">Citas de Hoy</h2>
-            <Link href="/citas" className="text-xs font-medium text-namay-steel hover:text-namay-coral transition-colors">Ver todas →</Link>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-gray-100">
+        <div className="lg:col-span-2 bg-white p-6">
+          <div className="flex items-center justify-between mb-5">
+            <p className="eyebrow">Citas de hoy</p>
+            <Link href="/citas" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/60 hover:text-namay-coral transition-colors">Ver todas →</Link>
           </div>
           {todayCitas.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No hay citas programadas para hoy</p>
+            <p className="text-sm text-namay-steel/40 text-center py-10 font-light">No hay citas programadas para hoy</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-0.5">
               {todayCitas.slice(0, 5).map((a) => (
-                <div key={a.id} className="flex items-center gap-3 p-3 rounded-btn bg-namay-cream/60">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-namay-navy">
+                <div key={a.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-namay-navy text-xs font-medium flex-shrink-0 border border-gray-100">
                     {a.paciente_nombre?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-namay-navy">{a.paciente_nombre}</p>
-                    <p className="text-xs text-gray-500 truncate">{a.servicio}</p>
+                    <p className="text-sm font-medium text-namay-navy truncate">{a.paciente_nombre}</p>
+                    <p className="text-xs text-namay-steel/60 font-light truncate">{a.servicio}</p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-semibold text-namay-steel tabular">
+                  <div className="text-right flex-shrink-0 space-y-1">
+                    <p className="text-xs font-medium text-namay-steel tabular">
                       {new Date(a.fecha_hora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <StatusBadge status={a.estado} kind="appointment" />
@@ -169,22 +181,18 @@ function OdontologoDashboard({ metrics, appointments, alerts }: { metrics: Dashb
             </div>
           )}
         </div>
-        <div className="card-base p-5">
-          <h2 className="text-sm font-semibold mb-4 text-namay-navy">Acciones Rápidas</h2>
-          <div className="space-y-1">
+        <div className="bg-white p-6">
+          <p className="eyebrow mb-5">Acciones rápidas</p>
+          <div className="space-y-0.5">
             {[
-              { label: 'Ver Pacientes',      icon: UsersIcon,             href: '/pacientes', color: '#1D3557' },
-              { label: 'Mis Citas',          icon: CalendarIcon,          href: '/citas',     color: '#457B9D' },
-              { label: 'Reportes Clínicos',  icon: DocumentChartBarIcon,  href: '/reportes',  color: '#E63946' },
+              { label: 'Ver pacientes',     icon: UsersIcon,            href: '/pacientes' },
+              { label: 'Mis citas',         icon: CalendarIcon,         href: '/citas' },
+              { label: 'Reportes clínicos', icon: DocumentChartBarIcon, href: '/reportes' },
             ].map((a) => (
-              <Link key={a.label} href={a.href} className="flex items-center gap-3 p-3 rounded-btn hover:bg-namay-cream transition-colors group">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: `${a.color}15` }}
-                >
-                  <a.icon className="h-4 w-4" style={{ color: a.color }} />
-                </div>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-namay-navy transition-colors">{a.label}</span>
+              <Link key={a.label} href={a.href} className="flex items-center gap-3 px-2 py-2.5 -mx-2 hover:bg-gray-50 transition-colors group">
+                <a.icon className="h-[18px] w-[18px] text-namay-steel/60 group-hover:text-namay-coral transition-colors" strokeWidth={1.5} />
+                <span className="text-sm font-light text-namay-navy">{a.label}</span>
+                <span className="ml-auto text-namay-steel/30 group-hover:text-namay-coral transition-colors">→</span>
               </Link>
             ))}
           </div>
@@ -194,8 +202,6 @@ function OdontologoDashboard({ metrics, appointments, alerts }: { metrics: Dashb
     </div>
   );
 }
-
-// ─── CAJERO ──────────────────────────────────────────────────────────
 
 function CajeroDashboard({ metrics, payments, alerts }: { metrics: DashboardMetrics | null; payments: any[]; alerts: any[] }) {
   const today = new Date().toDateString();
@@ -204,43 +210,54 @@ function CajeroDashboard({ metrics, payments, alerts }: { metrics: DashboardMetr
   const pending = payments.filter((p) => p.estado === 'pendiente').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Vista General"
-        title="Panel de Caja"
+        eyebrow="Vista general"
+        title="Panel de caja"
         subtitle="Control de ingresos y pagos del día"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCardDark
-          label="Ingresos Hoy"
-          value={`S/ ${todayIncome.toFixed(2)}`}
-          sub="Pagos completados hoy"
-          icon={CurrencyDollarIcon}
-        />
-        <StatCard label="Pagos Realizados" value={todayPayments.filter((p) => p.estado === 'completado').length} icon={CheckCircleIcon}     color="#1D3557" light="#EFF6FF" sub="Transacciones del día" />
-        <StatCard label="Pagos Pendientes" value={pending}                                                     icon={ExclamationCircleIcon} color="#F59E0B" light="#FFFBEB" sub="Por cobrar" />
-      </div>
-      <div className="card-base overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-namay-navy">Pagos Recientes</h2>
-          <Link href="/pagos" className="text-xs font-medium text-namay-steel hover:text-namay-coral transition-colors">Ver todos →</Link>
+      <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-3">
+        <div className="bg-namay-navy p-6">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.25em]">Ingresos hoy</p>
+          <p className="mt-3 text-2xl font-light text-white tabular">S/ {todayIncome.toFixed(2)}</p>
+          <p className="text-[11px] mt-1.5 text-white/40 font-light">Pagos completados hoy</p>
         </div>
-        <div className="divide-y divide-gray-50">
-          {payments.slice(0, 6).map((p) => (
-            <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-namay-cream/60 transition-colors">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-namay-steel">
-                {p.paciente_nombre?.charAt(0).toUpperCase()}
+        <div className="bg-white p-6">
+          <p className="eyebrow">Pagos realizados</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{todayPayments.filter((p) => p.estado === 'completado').length}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Transacciones del día</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Pagos pendientes</p>
+          <p className="mt-3 text-2xl font-light text-namay-coral tabular">{pending}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Por cobrar</p>
+        </div>
+      </div>
+      <div className="bg-white border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <p className="eyebrow">Pagos recientes</p>
+          <Link href="/pagos" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/60 hover:text-namay-coral transition-colors">Ver todos →</Link>
+        </div>
+        <div>
+          {payments.length === 0 ? (
+            <p className="text-sm text-namay-steel/40 text-center py-10 font-light">Sin pagos registrados</p>
+          ) : (
+            payments.slice(0, 6).map((p) => (
+              <div key={p.id} className="flex items-center gap-3 px-6 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-namay-navy text-xs font-medium flex-shrink-0 border border-gray-100">
+                  {p.paciente_nombre?.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-namay-navy truncate">{p.paciente_nombre}</p>
+                  <p className="text-xs text-namay-steel/60 font-light">{p.servicio}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-medium text-namay-navy tabular">S/ {p.monto?.toFixed(2)}</p>
+                  <StatusBadge status={p.estado} kind="payment" />
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-namay-navy">{p.paciente_nombre}</p>
-                <p className="text-xs text-gray-500">{p.servicio}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-bold text-success-600 tabular">S/ {p.monto?.toFixed(2)}</p>
-                <StatusBadge status={p.estado} kind="payment" />
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
       <AlertsPanel alerts={alerts} />
@@ -248,44 +265,54 @@ function CajeroDashboard({ metrics, payments, alerts }: { metrics: DashboardMetr
   );
 }
 
-// ─── RECEPCIONISTA ──────────────────────────────────────────────────
-
 function RecepcionistaDashboard({ metrics, appointments, alerts }: { metrics: DashboardMetrics | null; appointments: any[]; alerts: any[] }) {
   const today = new Date().toDateString();
   const todayCitas = appointments.filter((a) => new Date(a.fecha_hora).toDateString() === today);
   const pendientes = appointments.filter((a) => a.estado === 'pendiente').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Vista General"
-        title="Panel de Recepción"
+        eyebrow="Vista general"
+        title="Panel de recepción"
         subtitle="Agenda y pacientes del día"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Citas Hoy"            value={todayCitas.length}                  icon={CalendarIcon} color="#457B9D" light="#EFF6FF" sub="Agendadas para hoy" />
-        <StatCard label="Pacientes Registrados" value={metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0} icon={UsersIcon} color="#1D3557" light="#EFF6FF" sub="Total en el sistema" />
-        <StatCard label="Citas Pendientes"     value={pendientes}                         icon={ClockIcon}    color="#F59E0B" light="#FFFBEB" sub="Sin confirmar" />
+      <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-3">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas hoy</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{todayCitas.length}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Agendadas para hoy</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Pacientes registrados</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">{metrics?.totalPacientes ?? (metrics as any)?.resumen?.totalPacientes ?? 0}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Total en el sistema</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Citas pendientes</p>
+          <p className="mt-3 text-2xl font-light text-namay-coral tabular">{pendientes}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Sin confirmar</p>
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card-base p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-namay-navy">Agenda de Hoy</h2>
-            <Link href="/citas" className="text-xs font-medium text-namay-steel hover:text-namay-coral transition-colors">Ver todas →</Link>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-gray-100">
+        <div className="lg:col-span-2 bg-white p-6">
+          <div className="flex items-center justify-between mb-5">
+            <p className="eyebrow">Agenda de hoy</p>
+            <Link href="/citas" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/60 hover:text-namay-coral transition-colors">Ver todas →</Link>
           </div>
           {todayCitas.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No hay citas para hoy</p>
+            <p className="text-sm text-namay-steel/40 text-center py-10 font-light">No hay citas para hoy</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-0.5">
               {todayCitas.slice(0, 6).map((a) => (
-                <div key={a.id} className="flex items-center gap-3 p-3 rounded-btn bg-namay-cream/60">
-                  <ClockIcon className="h-5 w-5 flex-shrink-0 text-namay-steel" />
+                <div key={a.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <ClockIcon className="h-4 w-4 flex-shrink-0 text-namay-steel/50" strokeWidth={1.5} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-namay-navy">{a.paciente_nombre}</p>
-                    <p className="text-xs text-gray-500">{a.doctor_nombre} · {a.servicio}</p>
+                    <p className="text-sm font-medium text-namay-navy truncate">{a.paciente_nombre}</p>
+                    <p className="text-xs text-namay-steel/60 font-light">{a.doctor_nombre} · {a.servicio}</p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-semibold text-namay-steel tabular">
+                  <div className="text-right flex-shrink-0 space-y-1">
+                    <p className="text-xs font-medium text-namay-steel tabular">
                       {new Date(a.fecha_hora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <StatusBadge status={a.estado} kind="appointment" />
@@ -295,22 +322,18 @@ function RecepcionistaDashboard({ metrics, appointments, alerts }: { metrics: Da
             </div>
           )}
         </div>
-        <div className="card-base p-5">
-          <h2 className="text-sm font-semibold mb-4 text-namay-navy">Acciones Rápidas</h2>
-          <div className="space-y-1">
+        <div className="bg-white p-6">
+          <p className="eyebrow mb-5">Acciones rápidas</p>
+          <div className="space-y-0.5">
             {[
-              { label: 'Nueva Cita',     icon: CalendarIcon, href: '/citas',     color: '#E63946' },
-              { label: 'Nuevo Paciente', icon: UsersIcon,    href: '/pacientes', color: '#1D3557' },
-              { label: 'Chat',           icon: BellAlertIcon, href: '/chat',      color: '#457B9D' },
+              { label: 'Nueva cita',     icon: CalendarIcon,  href: '/citas' },
+              { label: 'Nuevo paciente', icon: UsersIcon,     href: '/pacientes' },
+              { label: 'Chat',           icon: BellAlertIcon, href: '/chat' },
             ].map((a) => (
-              <Link key={a.label} href={a.href} className="flex items-center gap-3 p-3 rounded-btn hover:bg-namay-cream transition-colors group">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: `${a.color}15` }}
-                >
-                  <a.icon className="h-4 w-4" style={{ color: a.color }} />
-                </div>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-namay-navy transition-colors">{a.label}</span>
+              <Link key={a.label} href={a.href} className="flex items-center gap-3 px-2 py-2.5 -mx-2 hover:bg-gray-50 transition-colors group">
+                <a.icon className="h-[18px] w-[18px] text-namay-steel/60 group-hover:text-namay-coral transition-colors" strokeWidth={1.5} />
+                <span className="text-sm font-light text-namay-navy">{a.label}</span>
+                <span className="ml-auto text-namay-steel/30 group-hover:text-namay-coral transition-colors">→</span>
               </Link>
             ))}
           </div>
@@ -320,59 +343,65 @@ function RecepcionistaDashboard({ metrics, appointments, alerts }: { metrics: Da
     </div>
   );
 }
-
-// ─── PRACTICANTE ─────────────────────────────────────────────────────
 
 function PracticanteDashboard({ alerts }: { alerts: any[] }) {
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Vista General"
-        title="Mi Panel"
+        eyebrow="Vista general"
+        title="Mi panel"
         subtitle={`${greeting} · Seguimiento de asistencia y turnos`}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Horas Esta Semana"  value="--" icon={ClockIcon}      color="#457B9D" light="#EFF6FF" sub="Registro acumulado" />
-        <StatCard label="Días Asistidos"     value="--" icon={CheckCircleIcon} color="#16A34A" light="#F0FDF4" sub="Este mes" />
-        <StatCard label="Turno Actual"       value="Mañana" icon={CalendarIcon} color="#1D3557" light="#F1F4F9" sub={now.toLocaleDateString('es-PE')} />
+      <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-3">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Horas esta semana</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy tabular">--</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Registro acumulado</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Días asistidos</p>
+          <p className="mt-3 text-2xl font-light text-namay-coral tabular">--</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light">Este mes</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Turno actual</p>
+          <p className="mt-3 text-2xl font-light text-namay-navy">Mañana</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-light tabular">{now.toLocaleDateString('es-PE')}</p>
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card-base p-5">
-          <h2 className="text-sm font-semibold mb-4 text-namay-navy">Mi Horario</h2>
-          <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-gray-100">
+        <div className="bg-white p-6">
+          <p className="eyebrow mb-5">Mi horario</p>
+          <div className="space-y-0.5">
             {[
               { dia: 'Hoy',    hora: '08:00 - 13:00', estado: 'Turno mañana' },
               { dia: 'Mañana', hora: '08:00 - 13:00', estado: 'Programado' },
             ].map((t) => (
-              <div key={t.dia} className="flex items-center gap-3 p-3 rounded-btn bg-namay-cream/60">
-                <CalendarIcon className="h-5 w-5 flex-shrink-0 text-namay-steel" />
+              <div key={t.dia} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                <CalendarIcon className="h-4 w-4 flex-shrink-0 text-namay-steel/50" strokeWidth={1.5} />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-namay-navy">{t.dia}</p>
-                  <p className="text-xs text-gray-500 tabular">{t.hora}</p>
+                  <p className="text-xs text-namay-steel/60 font-light tabular">{t.hora}</p>
                 </div>
-                <span className="badge-base bg-success-100 text-success-700">{t.estado}</span>
+                <span className="badge-base bg-success-50 text-success-700">{t.estado}</span>
               </div>
             ))}
           </div>
         </div>
-        <div className="card-base p-5">
-          <h2 className="text-sm font-semibold mb-4 text-namay-navy">Accesos Rápidos</h2>
-          <div className="space-y-1">
+        <div className="bg-white p-6">
+          <p className="eyebrow mb-5">Accesos rápidos</p>
+          <div className="space-y-0.5">
             {[
-              { label: 'Mis Reportes', icon: DocumentChartBarIcon, href: '/reportes', color: '#1D3557' },
-              { label: 'Chat',         icon: BellAlertIcon,        href: '/chat',      color: '#457B9D' },
+              { label: 'Mis reportes', icon: DocumentChartBarIcon, href: '/reportes' },
+              { label: 'Chat',         icon: BellAlertIcon,        href: '/chat' },
             ].map((a) => (
-              <Link key={a.label} href={a.href} className="flex items-center gap-3 p-3 rounded-btn hover:bg-namay-cream transition-colors group">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: `${a.color}15` }}
-                >
-                  <a.icon className="h-4 w-4" style={{ color: a.color }} />
-                </div>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-namay-navy transition-colors">{a.label}</span>
+              <Link key={a.label} href={a.href} className="flex items-center gap-3 px-2 py-2.5 -mx-2 hover:bg-gray-50 transition-colors group">
+                <a.icon className="h-[18px] w-[18px] text-namay-steel/60 group-hover:text-namay-coral transition-colors" strokeWidth={1.5} />
+                <span className="text-sm font-light text-namay-navy">{a.label}</span>
+                <span className="ml-auto text-namay-steel/30 group-hover:text-namay-coral transition-colors">→</span>
               </Link>
             ))}
           </div>
@@ -383,51 +412,34 @@ function PracticanteDashboard({ alerts }: { alerts: any[] }) {
   );
 }
 
-// ─── Shared alerts panel ────────────────────────────────────────────
-
 function AlertsPanel({ alerts }: { alerts: any[] }) {
-  const iconMap: any = { urgente: BellAlertIcon, alta: ExclamationCircleIcon };
-  const colorMap: any = { urgente: '#E63946', alta: '#F59E0B', media: '#457B9D', baja: '#6B7280' };
   return (
-    <div className="card-base p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-namay-navy">Alertas Activas</h2>
+    <div className="bg-white border border-gray-100 p-6">
+      <div className="flex items-center justify-between mb-5">
+        <p className="eyebrow">Alertas activas</p>
         {alerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded-full text-white font-semibold bg-namay-coral shadow-coral">
-            {alerts.length}
-          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-coral">{alerts.length}</span>
         )}
       </div>
       {alerts.length === 0 ? (
-        <div className="py-6 text-center text-sm text-gray-400">Sin alertas activas</div>
+        <p className="text-sm text-namay-steel/40 text-center py-6 font-light">Sin alertas activas</p>
       ) : (
-        <div className="space-y-3">
-          {alerts.slice(0, 4).map((alert: any, i: number) => {
-            const color = colorMap[alert.prioridad] ?? '#6B7280';
-            const Icon = iconMap[alert.prioridad] ?? ClockIcon;
-            return (
-              <div key={alert.id ?? i} className="flex items-start gap-3 p-3 rounded-btn bg-namay-cream/60">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${color}20` }}
-                >
-                  <Icon className="h-4 w-4" style={{ color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold capitalize" style={{ color }}>{alert.prioridad} — {alert.tipo}</p>
-                  <p className="text-sm text-gray-700 truncate">{alert.titulo}</p>
-                  {alert.descripcion && <p className="text-xs text-gray-400 truncate">{alert.descripcion}</p>}
-                </div>
+        <div className="space-y-0.5">
+          {alerts.slice(0, 4).map((alert: any, i: number) => (
+            <div key={alert.id ?? i} className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
+              <BellAlertIcon className="h-4 w-4 text-namay-coral mt-0.5" strokeWidth={1.5} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-coral">{alert.prioridad} · {alert.tipo}</p>
+                <p className="text-sm font-light text-namay-navy">{alert.titulo}</p>
+                {alert.descripcion && <p className="text-xs text-namay-steel/60 font-light mt-0.5">{alert.descripcion}</p>}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
-
-// ─── Main export ────────────────────────────────────────────────────
 
 export default function DashboardOverview() {
   const { user } = useAuth();

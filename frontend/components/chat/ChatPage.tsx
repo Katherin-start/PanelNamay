@@ -5,18 +5,18 @@ import { io, type Socket } from 'socket.io-client';
 import { ChatMessage, User } from '@/types';
 import { apiClient } from '@/lib/api';
 import { useInitializeStorage } from '@/hooks/useStorage';
+import PageHeader from '@/components/ui/PageHeader';
 import {
   PaperAirplaneIcon,
   MagnifyingGlassIcon,
   PaperClipIcon,
   CheckIcon,
-  CheckIcon as ChecksIcon,
   TrashIcon,
   EllipsisVerticalIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ChatPage() {
-  // Inicializar storage automáticamente
   useInitializeStorage();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -122,7 +122,6 @@ export default function ChatPage() {
     selectedContactRef.current = selectedContact;
   }, [selectedContact]);
 
-  // Auto-refresh messages every 3 seconds when a contact is selected
   useEffect(() => {
     if (!selectedContact?.id) {
       setMessages([]);
@@ -142,21 +141,18 @@ export default function ChatPage() {
       }
     };
 
-    // Load messages immediately
     loadMessages();
 
-    // Mark as read via API
     if (currentUserId) {
       apiClient.markChatMessagesAsRead(selectedContact.id).catch(err =>
         console.error('Error al marcar como leído:', err)
       );
     }
 
-    // Setup auto-polling every 3 seconds
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
     }
-    
+
     pollIntervalRef.current = setInterval(() => {
       loadMessages();
     }, 3000);
@@ -215,19 +211,16 @@ export default function ChatPage() {
       );
     });
 
-    // 🗑️ Evento cuando se elimina un mensaje
     socket.on('message_deleted', (data: any) => {
       setMessages((prev) => prev.filter((msg) => msg.id !== data.messageId));
       refreshContacts();
     });
 
-    // 🗑️ Evento cuando se vacía el chat
     socket.on('chat_cleared', (data: any) => {
       setMessages([]);
       refreshContacts();
     });
 
-    // 👤 Evento cuando cambia el estado online/offline de un usuario
     socket.on('user_status_changed', (data: any) => {
       setContacts((prev) =>
         prev.map((contact) =>
@@ -236,8 +229,7 @@ export default function ChatPage() {
             : contact
         )
       );
-      
-      // Si es el contacto seleccionado, actualizar su estado en el header
+
       if (selectedContactRef.current?.id === data.userId) {
         setSelectedContact((prev: any) => ({
           ...prev,
@@ -253,7 +245,6 @@ export default function ChatPage() {
       }
     });
 
-    // Setup auto-refresh de contactos cada 5 segundos
     if (contactsPollRef.current) {
       clearInterval(contactsPollRef.current);
     }
@@ -360,7 +351,6 @@ export default function ChatPage() {
     };
   };
 
-  // 📅 Función para formatear hora relativa
   const getRelativeTime = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
@@ -382,7 +372,6 @@ export default function ChatPage() {
     });
   };
 
-  // 📅 Función para obtener hora y fecha
   const getMessageTime = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('es-PE', {
@@ -404,7 +393,6 @@ export default function ChatPage() {
       return;
     }
 
-    // Validar tamaño del archivo
     if (selectedFile && selectedFile.size > 20 * 1024 * 1024) {
       alert('El archivo no puede ser mayor a 20 MB. Por favor selecciona uno más pequeño.');
       return;
@@ -415,7 +403,7 @@ export default function ChatPage() {
       if (selectedFile) {
         setIsUploading(true);
         console.log(`Enviando archivo: ${selectedFile.name} (${selectedFile.size} bytes)`);
-        
+
         sent = await apiClient.sendChatAttachment({
           destinatario_id: recipientId,
           file: selectedFile,
@@ -435,10 +423,9 @@ export default function ChatPage() {
       lastTypingSentRef.current = false;
     } catch (error: any) {
       console.error('Error al enviar mensaje:', error);
-      
+
       let errorMessage = 'No se pudo enviar el mensaje';
-      
-      // Mensajes de error más informativos
+
       if (error?.message?.includes('Bucket not found')) {
         errorMessage = 'Error de configuración: Bucket de archivos no configurado. Contacta al administrador.';
       } else if (error?.message?.includes('Permission denied')) {
@@ -450,14 +437,13 @@ export default function ChatPage() {
       } else {
         errorMessage = `No se pudo enviar: ${error?.message ?? 'Error desconocido'}`;
       }
-      
+
       alert(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
 
-  // 🗑️ Eliminar mensaje completamente
   const handleDeleteMessage = async (messageId: string) => {
     if (!confirm('¿Estás seguro? El mensaje será eliminado permanentemente')) return;
 
@@ -471,7 +457,6 @@ export default function ChatPage() {
     }
   };
 
-  // 🗑️ Vaciar chat
   const handleClearChat = async () => {
     if (!confirm('¿Estás seguro? Se eliminarán TODOS los mensajes de este chat')) return;
 
@@ -485,7 +470,6 @@ export default function ChatPage() {
     }
   };
 
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -495,37 +479,35 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#457B9D' }}>
-          Panel · Mensajería
-        </p>
-        <h1 className="text-2xl font-bold mt-0.5" style={{ color: '#1D3557' }}>
-          Chat Interno
-        </h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Mensajería"
+        title="Chat interno"
+        subtitle="Comunícate con el equipo de la clínica en tiempo real"
+        icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
+      />
 
       <div
-        className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '500px' }}
+        className="bg-white border border-gray-100 overflow-hidden flex"
+        style={{ height: 'calc(100vh - 240px)', minHeight: '500px' }}
       >
         {/* Contacts sidebar */}
-        <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col">
-          <div className="p-3 border-b border-gray-100">
+        <div className="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-100">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
               <input
                 type="text"
                 value={searchContact}
                 onChange={(e) => setSearchContact(e.target.value)}
                 placeholder="Buscar contacto o rol..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none"
+                className="input-search"
               />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             {contacts.length === 0 ? (
-              <div className="p-4 text-center text-xs text-gray-400">Sin contactos</div>
+              <div className="p-4 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-300">Sin contactos</div>
             ) : (
               contacts
                 .filter((contact) =>
@@ -537,41 +519,37 @@ export default function ChatPage() {
                   <button
                     key={contact.id}
                     onClick={() => setSelectedContact(contact)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedContact?.id === contact.id ? 'bg-blue-50' : ''
+                    className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors border-l-2 ${
+                      selectedContact?.id === contact.id
+                        ? 'border-namay-coral bg-namay-coral/[0.04]'
+                        : 'border-transparent hover:bg-gray-50/50'
                     }`}
                   >
-                  {contact.foto_perfil ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={contact.foto_perfil}
-                      alt={contact.nombre}
-                      className="w-9 h-9 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                      style={{ backgroundColor: '#457B9D' }}
-                    >
-                      {contact.nombre?.charAt(0).toUpperCase()}
+                    {contact.foto_perfil ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={contact.foto_perfil}
+                        alt={contact.nombre}
+                        className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="avatar-initials w-9 h-9 bg-namay-navy text-xs">
+                        {contact.nombre?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-namay-navy truncate">
+                        {contact.nombre}
+                      </p>
+                      <p className="text-[11px] text-namay-steel/70 font-medium truncate">{contact.rol}</p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: '#1D3557' }}>
-                      {contact.nombre}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">{contact.rol}</p>
-                  </div>
-                  {contact.mensajes_no_leidos > 0 && (
-                    <span
-                      className="w-5 h-5 rounded-full text-xs font-bold text-white flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: '#E63946' }}
-                    >
-                      {contact.mensajes_no_leidos}
-                    </span>
-                  )}
-                </button>
-              ))
+                    {contact.mensajes_no_leidos > 0 && (
+                      <span className="badge-base bg-namay-coral text-white min-w-[20px] h-5 justify-center text-[10px]">
+                        {contact.mensajes_no_leidos}
+                      </span>
+                    )}
+                  </button>
+                ))
             )}
           </div>
         </div>
@@ -581,7 +559,7 @@ export default function ChatPage() {
           {selectedContact ? (
             <>
               {/* Chat header */}
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
                 <div className="flex items-center gap-3">
                   {selectedContact.foto_perfil ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -591,154 +569,157 @@ export default function ChatPage() {
                       className="w-9 h-9 rounded-full object-cover"
                     />
                   ) : (
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                      style={{ backgroundColor: '#457B9D' }}
-                    >
+                    <div className="avatar-initials w-9 h-9 bg-namay-navy text-xs">
                       {selectedContact.nombre?.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
+                    <p className="text-sm font-semibold text-namay-navy">
                       {selectedContact.nombre}
                     </p>
-                    <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1">
-                      <div 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: selectedContact.online ? '#22c55e' : '#9ca3af' }}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          selectedContact.online
+                            ? 'bg-success-500 animate-pulse'
+                            : 'bg-gray-300'
+                        }`}
                       />
-                      <p className="text-xs text-gray-400">
-                        {selectedContact.online 
-                          ? 'En línea' 
-                          : selectedContact.last_seen 
+                      <p className="text-[11px] text-namay-steel/70 font-medium">
+                        {selectedContact.online
+                          ? 'En línea'
+                          : selectedContact.last_seen
                             ? `Última vez ${getRelativeTime(selectedContact.last_seen)}`
                             : 'Sin conexión'
                         }
                       </p>
+                      {contactTyping && selectedContact.online && (
+                        <>
+                          <span className="text-gray-300">·</span>
+                          <p className="text-[11px] text-namay-coral font-semibold uppercase tracking-[0.15em] animate-pulse">
+                            Escribiendo
+                          </p>
+                        </>
+                      )}
                     </div>
-                    {contactTyping && selectedContact.online && (
-                      <p className="text-xs text-blue-600">Escribiendo...</p>
-                    )}
-                  </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">{selectedContact.correo}</span>
+                  <span className="hidden md:inline text-[11px] text-namay-steel/70 font-medium">{selectedContact.correo}</span>
                   <button
                     onClick={handleClearChat}
-                    className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-50 text-namay-steel/50 hover:text-danger-500 transition-colors"
                     title="Vaciar chat"
                   >
-                    <TrashIcon className="h-5 w-5 text-red-500" />
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: '#F8FAFC' }}>
+              <div className="flex-1 overflow-y-auto px-6 py-5 bg-namay-cream/30">
                 {messages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                    No hay mensajes. ¡Inicia la conversación!
+                  <div className="h-full flex flex-col items-center justify-center text-namay-steel/40 gap-3">
+                    <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-300" strokeWidth={1.5} />
+                    <p className="text-sm font-medium">No hay mensajes. ¡Inicia la conversación!</p>
                   </div>
                 ) : (
-                  messages.map((message) => {
-                    const isMine = message.remitente_id !== selectedContact?.id;
-                    return (
-                      <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                        <div className="max-w-xs lg:max-w-md">
-                          {!isMine && (
-                            <p className="text-xs text-gray-400 mb-1 ml-1">{message.remitente_nombre}</p>
-                          )}
-                          <div className="relative group">
-                            <div
-                              className="px-4 py-2.5 text-sm"
-                              style={{
-                                backgroundColor: isMine ? '#1D3557' : '#F1F4F9',
-                                color: isMine ? 'white' : '#1D3557',
-                                borderRadius: isMine ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
-                              }}
-                            >
-                              {message.tipo === 'imagen' && message.attachment_url ? (
-                                <img
-                                  src={message.attachment_url}
-                                  alt={message.attachment_name ?? 'Imagen'}
-                                  className="max-w-full rounded-xl"
-                                />
-                              ) : message.tipo === 'documento' && message.attachment_url ? (
-                                <a
-                                  href={message.attachment_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-2 text-sm text-white underline"
-                                  style={{ color: isMine ? 'white' : '#1D3557' }}
-                                >
-                                  <PaperClipIcon className="h-4 w-4" />
-                                  {message.attachment_name ?? 'Documento'}
-                                </a>
-                              ) : (
-                                <span>{message.mensaje}</span>
-                              )}
-
-                              {message.caption && message.tipo !== 'texto' ? (
-                                <p className="text-[11px] text-white/80 mt-2">{message.caption}</p>
-                              ) : null}
-                            </div>
-
-                            {/* 🗑️ Menu de opciones */}
-                            <button
-                              onClick={() => setMenuOpenMessageId(menuOpenMessageId === message.id ? null : message.id)}
-                              className={`absolute ${isMine ? '-left-8' : '-right-8'} top-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity`}
-                              title="Opciones del mensaje"
-                            >
-                              <EllipsisVerticalIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                            </button>
-
-                            {/* Dropdown Menu */}
-                            {menuOpenMessageId === message.id && (
-                              <div
-                                className={`absolute ${isMine ? 'right-0' : 'left-0'} top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-max`}
-                              >
-                                <button
-                                  onClick={() => handleDeleteMessage(message.id)}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 first:rounded-t-lg flex items-center gap-2"
-                                >
-                                  <TrashIcon className="h-4 w-4" />
-                                  Eliminar mensaje
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className={`mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
-                            <div className="flex items-center gap-1 justify-end" style={isMine ? {} : { justifyContent: 'flex-start' }}>
-                              <p className="text-xs text-gray-400">
-                                {getMessageTime(message.fecha_envio)}
+                  <div className="space-y-4">
+                    {messages.map((message) => {
+                      const isMine = message.remitente_id !== selectedContact?.id;
+                      return (
+                        <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                          <div className="max-w-xs lg:max-w-md">
+                            {!isMine && (
+                              <p className="text-[10px] text-namay-steel/60 font-semibold mb-1 ml-1 uppercase tracking-[0.15em]">
+                                {message.remitente_nombre}
                               </p>
-                              {isMine && (
-                                message.leido ? (
-                                  <div className="flex gap-0.5">
-                                    <CheckIcon className="h-3 w-3 text-blue-500" />
-                                    <CheckIcon className="h-3 w-3 text-blue-500 -ml-1.5" />
-                                  </div>
+                            )}
+                            <div className="relative group">
+                              <div
+                                className={`px-4 py-2.5 text-sm leading-relaxed ${
+                                  isMine
+                                    ? 'bg-namay-navy text-white'
+                                    : 'bg-white text-namay-navy border border-gray-100'
+                                }`}
+                                style={{
+                                  borderRadius: isMine ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                                }}
+                              >
+                                {message.tipo === 'imagen' && message.attachment_url ? (
+                                  <img
+                                    src={message.attachment_url}
+                                    alt={message.attachment_name ?? 'Imagen'}
+                                    className="max-w-full rounded"
+                                  />
+                                ) : message.tipo === 'documento' && message.attachment_url ? (
+                                  <a
+                                    href={message.attachment_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`inline-flex items-center gap-2 text-sm underline ${
+                                      isMine ? 'text-white' : 'text-namay-navy'
+                                    }`}
+                                  >
+                                    <PaperClipIcon className="h-4 w-4" />
+                                    {message.attachment_name ?? 'Documento'}
+                                  </a>
                                 ) : (
-                                  <CheckIcon className="h-3 w-3 text-gray-400" />
-                                )
+                                  <span>{message.mensaje}</span>
+                                )}
+
+                                {message.caption && message.tipo !== 'texto' ? (
+                                  <p className={`text-[11px] mt-2 font-medium ${isMine ? 'text-white/70' : 'text-namay-steel/60'}`}>
+                                    {message.caption}
+                                  </p>
+                                ) : null}
+                              </div>
+
+                              <button
+                                onClick={() => setMenuOpenMessageId(menuOpenMessageId === message.id ? null : message.id)}
+                                className={`absolute ${isMine ? '-left-8' : '-right-8'} top-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity`}
+                                title="Opciones del mensaje"
+                              >
+                                <EllipsisVerticalIcon className="h-4 w-4 text-namay-steel/40 hover:text-namay-navy" />
+                              </button>
+
+                              {menuOpenMessageId === message.id && (
+                                <div
+                                  className={`absolute ${isMine ? 'right-0' : 'left-0'} top-full mt-2 bg-white border border-gray-100 z-50 min-w-max overflow-hidden animate-scale-in`}
+                                >
+                                  <button
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="w-full text-left px-4 py-2.5 text-xs font-medium text-danger-500 hover:bg-danger-50 flex items-center gap-2"
+                                  >
+                                    <TrashIcon className="h-3.5 w-3.5" />
+                                    Eliminar mensaje
+                                  </button>
+                                </div>
                               )}
                             </div>
-                            {/* 📅 Mostrar fecha si es diferente al día anterior */}
-                            <p className="text-xs text-gray-300 mt-1">
-                              {new Date(message.fecha_envio).toLocaleDateString('es-PE', {
-                                weekday: 'short',
-                                day: 'numeric',
-                                month: 'short',
-                              })}
-                            </p>
+
+                            <div className={`mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
+                              <div className={`flex items-center gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                <p className="text-[10px] text-namay-steel/50 font-medium tabular">
+                                  {getMessageTime(message.fecha_envio)}
+                                </p>
+                                {isMine && (
+                                  message.leido ? (
+                                    <div className="flex gap-0.5">
+                                      <CheckIcon className="h-3 w-3 text-info-500" />
+                                      <CheckIcon className="h-3 w-3 text-info-500 -ml-1.5" />
+                                    </div>
+                                  ) : (
+                                    <CheckIcon className="h-3 w-3 text-gray-300" />
+                                  )
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+                  </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -746,30 +727,33 @@ export default function ChatPage() {
               {/* Input */}
               <form
                 onSubmit={handleSendMessage}
-                className="px-4 py-3 border-t border-gray-100 space-y-3"
+                className="px-6 py-4 border-t border-gray-100 space-y-3 bg-white"
               >
                 {selectedFile && (
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-900 truncate">
+                  <div className="flex items-center gap-3 p-3 border-l-2 border-info-500 bg-info-50 animate-fade-in">
+                    <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-info-600 border border-info-100">
+                      <PaperClipIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-namay-navy truncate">
                         {selectedFile.name}
                       </p>
-                      <p className="text-xs text-blue-600">
+                      <p className="text-[11px] text-namay-steel/60 font-medium tabular">
                         {(selectedFile.size / 1024).toFixed(2)} KB
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedFile(null)}
-                      className="text-blue-600 hover:text-blue-700 font-semibold text-sm"
+                      className="text-namay-steel/50 hover:text-danger-500 font-semibold text-sm transition-colors"
                     >
                       ✕
                     </button>
                   </div>
                 )}
                 <div className="flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors">
-                    <PaperClipIcon className="h-4 w-4" />
+                  <label className="inline-flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-namay-steel/70 border-b border-transparent hover:text-namay-coral hover:border-namay-coral transition-colors cursor-pointer">
+                    <PaperClipIcon className="h-3.5 w-3.5" />
                     Adjuntar
                     <input
                       type="file"
@@ -796,13 +780,12 @@ export default function ChatPage() {
                       handleTyping(e.target.value);
                     }}
                     placeholder={selectedFile ? 'Añade un comentario opcional...' : 'Escribe un mensaje...'}
-                    className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#457B9D]"
+                    className="input-underline flex-1"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim() && !selectedFile || isUploading}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    style={{ backgroundColor: '#1D3557' }}
+                    className="btn-primary !p-2.5 w-11 h-11"
                     title={isUploading ? 'Enviando...' : 'Enviar'}
                   >
                     {isUploading ? (
@@ -815,8 +798,9 @@ export default function ChatPage() {
               </form>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-              Selecciona un contacto para comenzar
+            <div className="flex-1 flex flex-col items-center justify-center text-namay-steel/50 gap-3">
+              <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-300" strokeWidth={1.5} />
+              <p className="text-sm font-medium">Selecciona un contacto para comenzar</p>
             </div>
           )}
         </div>

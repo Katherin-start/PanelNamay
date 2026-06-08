@@ -10,18 +10,17 @@ import {
   ChartBarIcon,
   ClockIcon,
   SparklesIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import PageHeader from '@/components/ui/PageHeader';
 import Modal, { ModalActions } from '@/components/ui/Modal';
 
 const reportTypes = [
-  { id: 'pacientes',  label: 'Reporte de Pacientes', description: 'Lista y estadísticas de pacientes registrados', icon: UsersIcon,          color: '#1D3557', light: '#EFF6FF' },
-  { id: 'citas',      label: 'Reporte de Citas',     description: 'Historial y estado de citas médicas',            icon: CalendarIcon,       color: '#457B9D', light: '#EFF6FF' },
-  { id: 'ingresos',   label: 'Reporte de Ingresos',  description: 'Ingresos y facturación del período',             icon: CurrencyDollarIcon, color: '#16A34A', light: '#F0FDF4' },
-  { id: 'asistencia', label: 'Reporte de Asistencia', description: 'Control de asistencia de pacientes y doctores',  icon: ChartBarIcon,       color: '#E63946', light: '#FEF2F2' },
-  { id: 'horas',      label: 'Reporte de Horas',     description: 'Horas trabajadas por doctor',                    icon: ClockIcon,          color: '#7C3AED', light: '#EDE9FE' },
-  { id: 'financiero', label: 'Reporte Financiero',   description: 'Balance general y análisis financiero',          icon: SparklesIcon,       color: '#D97706', light: '#FFFBEB' },
+  { id: 'pacientes',  label: 'Reporte de pacientes',  description: 'Lista y estadísticas de pacientes registrados', icon: UsersIcon },
+  { id: 'citas',      label: 'Reporte de citas',      description: 'Historial y estado de citas médicas',            icon: CalendarIcon },
+  { id: 'ingresos',   label: 'Reporte de ingresos',   description: 'Ingresos y facturación del período',             icon: CurrencyDollarIcon },
+  { id: 'asistencia', label: 'Reporte de asistencia', description: 'Control de asistencia de pacientes y doctores',  icon: ChartBarIcon },
+  { id: 'horas',      label: 'Reporte de horas',      description: 'Horas trabajadas por doctor',                    icon: ClockIcon },
+  { id: 'financiero', label: 'Reporte financiero',    description: 'Balance general y análisis financiero',          icon: SparklesIcon },
 ];
 
 export default function ReportsPage() {
@@ -53,30 +52,22 @@ export default function ReportsPage() {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Reportes"
-        title="Reportes y Estadísticas"
+        eyebrow="Análisis"
+        title="Reportes y estadísticas"
         subtitle="Genera y descarga reportes detallados del sistema."
       />
 
       {/* Report type cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-100">
         {reportTypes.map((rt) => (
-          <div
-            key={rt.id}
-            className="card-base p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-card-lg hover:-translate-y-0.5"
-          >
+          <div key={rt.id} className="bg-white p-6 flex flex-col gap-5 transition-colors hover:bg-namay-cream/30">
             <div className="flex items-start gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: rt.light }}
-              >
-                <rt.icon className="h-5 w-5" style={{ color: rt.color }} />
-              </div>
+              <rt.icon className="h-5 w-5 text-namay-steel/60 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-namay-navy">{rt.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{rt.description}</p>
+                <p className="text-[11px] text-namay-steel/60 font-medium mt-1 leading-relaxed">{rt.description}</p>
               </div>
             </div>
             <button
@@ -86,12 +77,11 @@ export default function ReportsPage() {
                 setDownloadError('');
               }}
               disabled={generating === rt.id}
-              className="w-full py-2 text-sm font-semibold text-white rounded-btn transition-all duration-150 hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 shadow-card"
-              style={{ backgroundColor: rt.color }}
+              className="w-full py-2.5 text-xs font-semibold text-namay-navy border border-namay-navy/20 hover:border-namay-navy hover:bg-namay-navy hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {generating === rt.id ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
@@ -99,8 +89,8 @@ export default function ReportsPage() {
                 </>
               ) : (
                 <>
-                  <ArrowDownTrayIcon className="h-4 w-4" />
-                  Generar Reporte
+                  <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                  Generar reporte
                 </>
               )}
             </button>
@@ -115,7 +105,7 @@ export default function ReportsPage() {
       onClose={() => setSelectedReport(null)}
       title={selectedReport?.label ?? ''}
       subtitle={selectedReport?.description}
-      icon={selectedReport ? <selectedReport.icon className="h-5 w-5 text-white" /> : undefined}
+      icon={selectedReport ? <selectedReport.icon className="h-4 w-4 text-namay-navy" /> : undefined}
       size="md"
       footer={
         <ModalActions
@@ -128,21 +118,19 @@ export default function ReportsPage() {
       }
     >
       {downloadError && (
-        <div className="mb-4 p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+        <div className="mb-5 p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
           {downloadError}
         </div>
       )}
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.1em] mb-3">
-        Rango de fechas (opcional)
-      </p>
-      <div className="grid grid-cols-2 gap-3">
+      <p className="eyebrow mb-4">Rango de fechas (opcional)</p>
+      <div className="grid grid-cols-2 gap-5">
         <div>
           <label className="label-base">Desde</label>
           <input
             type="date"
             value={reportParams.startDate}
             onChange={(e) => setReportParams((p) => ({ ...p, startDate: e.target.value }))}
-            className="input-base"
+            className="input-underline"
           />
         </div>
         <div>
@@ -151,7 +139,7 @@ export default function ReportsPage() {
             type="date"
             value={reportParams.endDate}
             onChange={(e) => setReportParams((p) => ({ ...p, endDate: e.target.value }))}
-            className="input-base"
+            className="input-underline"
           />
         </div>
       </div>

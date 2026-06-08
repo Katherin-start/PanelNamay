@@ -9,7 +9,6 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   CalendarIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -116,10 +115,10 @@ export default function PaymentsPage() {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Panel · Gestión de Pagos"
-        title="Pagos y Facturación"
+        eyebrow="Gestión financiera"
+        title="Pagos y facturación"
         subtitle="Registra y controla los pagos de los pacientes."
         action={
           <button
@@ -127,45 +126,37 @@ export default function PaymentsPage() {
             className="btn-primary"
           >
             <PlusIcon className="h-4 w-4" />
-            Registrar Pago
+            Registrar pago
           </button>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-card p-5 text-white bg-gradient-to-br from-namay-navy to-namay-steel shadow-card-md">
-          <p className="text-[11px] font-semibold text-white/70 uppercase tracking-[0.1em]">Ingresos Totales</p>
-          <p className="text-3xl font-bold mt-2 tabular">S/ {totalIngresos.toFixed(2)}</p>
-          <p className="text-xs text-white/60 mt-1">Pagos completados</p>
+      {/* Stats — hairline grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-100">
+        <div className="bg-namay-navy p-6">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.25em]">Ingresos totales</p>
+          <p className="mt-3 text-3xl font-medium text-white tabular">S/ {totalIngresos.toFixed(2)}</p>
+          <p className="text-[11px] mt-1.5 text-white/40 font-medium">Pagos completados</p>
         </div>
-        <div className="card-base p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: '#F59E0B' }}>
-            Pendiente de Cobro
-          </p>
-          <p className="text-3xl font-bold mt-2 text-namay-navy tabular">
-            S/ {totalPendiente.toFixed(2)}
-          </p>
-          <p className="text-xs mt-1 text-gray-400">
+        <div className="bg-white p-6">
+          <p className="eyebrow">Pendiente de cobro</p>
+          <p className="mt-3 text-3xl font-medium text-namay-coral tabular">S/ {totalPendiente.toFixed(2)}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-medium">
             {payments.filter((p) => p.estado === 'pendiente').length} pagos pendientes
           </p>
         </div>
-        <div className="card-base p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-namay-steel">
-            Total Transacciones
-          </p>
-          <p className="text-3xl font-bold mt-2 text-namay-navy tabular">
-            {payments.length}
-          </p>
-          <p className="text-xs mt-1 text-gray-400">Este período</p>
+        <div className="bg-white p-6">
+          <p className="eyebrow">Total transacciones</p>
+          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">{payments.length}</p>
+          <p className="text-[11px] mt-1.5 text-namay-steel/60 font-medium">Este período</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="card-base overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+      <div className="bg-white border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
             <input
               type="text"
               placeholder="Buscar paciente o servicio..."
@@ -179,7 +170,7 @@ export default function PaymentsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-namay-cream">
+              <tr>
                 <th className="table-header">Paciente</th>
                 <th className="table-header">Servicio</th>
                 <th className="table-header">Monto</th>
@@ -190,44 +181,44 @@ export default function PaymentsPage() {
                 <th className="table-header">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-gray-400 text-sm">
+                  <td colSpan={8} className="text-center py-14 text-sm text-namay-steel/40 font-medium">
                     No se encontraron pagos
                   </td>
                 </tr>
               ) : (
                 filtered.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-namay-cream/50 transition-colors">
+                  <tr key={payment.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="table-cell">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold bg-namay-navy">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 bg-namay-navy">
                           {payment.paciente_nombre?.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-sm font-medium text-namay-navy">{payment.paciente_nombre}</span>
+                        <span className="text-sm font-semibold text-namay-navy">{payment.paciente_nombre}</span>
                       </div>
                     </td>
-                    <td className="table-cell text-sm text-gray-600">{payment.servicio}</td>
+                    <td className="table-cell text-sm text-namay-steel font-medium">{payment.servicio}</td>
                     <td className="table-cell">
-                      <span className="text-sm font-bold text-namay-navy tabular">S/ {payment.monto.toFixed(2)}</span>
+                      <span className="text-sm font-medium text-namay-steel/80 tabular">S/ {payment.monto.toFixed(2)}</span>
                     </td>
-                    <td className="table-cell text-sm text-gray-600">
+                    <td className="table-cell text-sm text-namay-steel font-medium">
                       {payment.descuento_nombre ? (
                         `${payment.descuento_nombre} (${payment.descuento_tipo === 'porcentaje' ? `-${payment.descuento_valor}%` : `-S/ ${Number(payment.descuento_valor).toFixed(2)}`})`
                       ) : (
-                        '—'
+                        <span className="text-namay-steel/30">—</span>
                       )}
                     </td>
                     <td className="table-cell text-sm font-semibold text-namay-navy tabular">
                       S/ {(Number(payment.monto_final ?? payment.monto) || 0).toFixed(2)}
                     </td>
-                    <td className="table-cell text-sm text-gray-600">
+                    <td className="table-cell text-sm text-namay-steel font-medium">
                       {methodLabels[payment.metodo_pago] || payment.metodo_pago}
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="flex items-center gap-1.5 text-sm text-namay-steel font-medium tabular">
+                        <CalendarIcon className="h-3.5 w-3.5 text-namay-steel/40" />
                         {new Date(payment.fecha).toLocaleDateString('es-PE', {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
@@ -244,9 +235,9 @@ export default function PaymentsPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
-              Mostrando <span className="font-semibold text-namay-navy">{filtered.length}</span> de {payments.length} pagos
+          <div className="px-6 py-3 border-t border-gray-100">
+            <p className="text-[11px] font-medium text-namay-steel/60 uppercase tracking-[0.15em] tabular">
+              Mostrando <span className="text-namay-navy font-semibold">{filtered.length}</span> de {payments.length} pagos
             </p>
           </div>
         )}
@@ -257,25 +248,25 @@ export default function PaymentsPage() {
     <Modal
       open={showNew}
       onClose={() => setShowNew(false)}
-      title="Registrar Pago"
-      icon={<CurrencyDollarIcon className="h-5 w-5 text-white" />}
+      title="Registrar pago"
+      icon={<CurrencyDollarIcon className="h-4 w-4 text-namay-navy" />}
       size="lg"
       footer={
         <ModalActions
           onCancel={() => setShowNew(false)}
           onConfirm={() => document.getElementById('payment-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))}
-          confirmLabel={saving ? 'Guardando...' : 'Registrar Pago'}
+          confirmLabel={saving ? 'Guardando...' : 'Registrar pago'}
           loading={saving}
         />
       }
     >
-      <form id="payment-form" onSubmit={handleCreatePayment} className="space-y-4">
+      <form id="payment-form" onSubmit={handleCreatePayment} className="space-y-5">
         {formError && (
-          <div className="p-3 rounded-btn text-sm font-medium bg-danger-50 text-danger-600 border border-danger-100">
+          <div className="p-3 text-sm font-medium text-danger-700 bg-danger-50 border-l-2 border-danger-500">
             {formError}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
             <label className="label-base">Monto (S/) <span className="text-namay-coral">*</span></label>
             <input
@@ -284,17 +275,17 @@ export default function PaymentsPage() {
               step="0.01"
               value={payForm.monto}
               onChange={(e) => setPayForm((p) => ({ ...p, monto: e.target.value }))}
-              className="input-base tabular"
+              className="input-underline tabular"
               placeholder="0.00"
             />
           </div>
           <div>
-            <label className="label-base">Fecha de Pago</label>
+            <label className="label-base">Fecha de pago</label>
             <input
               type="date"
               value={payForm.fecha_pago}
               onChange={(e) => setPayForm((p) => ({ ...p, fecha_pago: e.target.value }))}
-              className="input-base"
+              className="input-underline"
             />
           </div>
         </div>
@@ -304,17 +295,17 @@ export default function PaymentsPage() {
             type="text"
             value={payForm.descripcion}
             onChange={(e) => setPayForm((p) => ({ ...p, descripcion: e.target.value }))}
-            className="input-base"
+            className="input-underline"
             placeholder="Ej: Limpieza dental, Ortodoncia..."
           />
         </div>
         {canApplyDiscount && payForm.descuento_id && (
-          <div className="rounded-btn border border-info-100 bg-info-50 p-4">
-            <p className="text-xs font-semibold text-info-700">Descuento aplicado</p>
-            <p className="text-sm text-info-600 mt-1">
+          <div className="p-4 border-l-2 border-info-500 bg-info-50">
+            <p className="text-[10px] font-semibold text-info-700 uppercase tracking-[0.2em]">Descuento aplicado</p>
+            <p className="text-sm font-medium text-info-700 mt-1.5">
               {selectedDiscount?.nombre} - {selectedDiscount?.tipo === 'porcentaje' ? `-${selectedDiscount?.valor}%` : `-S/ ${selectedDiscount?.valor?.toFixed(2)}`}
             </p>
-            <p className="text-xs text-info-600 mt-1 tabular">Total después de descuento: S/ {finalAmount.toFixed(2)}</p>
+            <p className="text-[11px] text-info-600 mt-1.5 tabular font-medium">Total después de descuento: S/ {finalAmount.toFixed(2)}</p>
           </div>
         )}
         {canApplyDiscount && (
@@ -323,7 +314,7 @@ export default function PaymentsPage() {
             <select
               value={payForm.descuento_id}
               onChange={(e) => setPayForm((p) => ({ ...p, descuento_id: e.target.value }))}
-              className="input-base bg-white"
+              className="input-underline bg-white"
             >
               <option value="">Sin descuento</option>
               {discounts.map((discount) => (
@@ -334,13 +325,13 @@ export default function PaymentsPage() {
             </select>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
-            <label className="label-base">Método de Pago</label>
+            <label className="label-base">Método de pago</label>
             <select
               value={payForm.metodo}
               onChange={(e) => setPayForm((p) => ({ ...p, metodo: e.target.value }))}
-              className="input-base bg-white"
+              className="input-underline bg-white"
             >
               <option value="efectivo">Efectivo</option>
               <option value="yape">Yape</option>
@@ -354,7 +345,7 @@ export default function PaymentsPage() {
             <select
               value={payForm.estado}
               onChange={(e) => setPayForm((p) => ({ ...p, estado: e.target.value }))}
-              className="input-base bg-white"
+              className="input-underline bg-white"
             >
               <option value="completado">Completado</option>
               <option value="pendiente">Pendiente</option>

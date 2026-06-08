@@ -4,12 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
+import Modal from '@/components/ui/Modal';
 import {
   DocumentTextIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   PencilSquareIcon,
   StarIcon,
+  UserCircleIcon,
+  LightBulbIcon,
 } from '@heroicons/react/24/outline';
 
 export default function DentistBiographyPage() {
@@ -26,14 +31,12 @@ export default function DentistBiographyPage() {
   const [success, setSuccess] = useState('');
   const MAX_CHARS = 1000;
 
-  // Check access: Only dentists (ODONTOLOGO)
   useEffect(() => {
     if (!isLoading && user?.rol !== 'ODONTOLOGO') {
       router.push('/dashboard');
     }
   }, [isLoading, user, router]);
 
-  // Load biography and reviews on mount
   useEffect(() => {
     const loadBiography = async () => {
       try {
@@ -85,7 +88,7 @@ export default function DentistBiographyPage() {
       await apiClient.updateBiography(biografia);
       setBiografiaGuardada(biografia);
       setIsEditing(false);
-      setSuccess('✅ Biografía actualizada exitosamente');
+      setSuccess('Biografía actualizada exitosamente');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Error al guardar la biografía');
@@ -103,68 +106,101 @@ export default function DentistBiographyPage() {
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#457B9D] border-t-[#E63946] mx-auto mb-3" />
-          <p className="text-sm" style={{ color: '#457B9D' }}>Cargando...</p>
-        </div>
+        <div className="spinner-namay" />
       </div>
     );
   }
 
-  // Redirect if not a dentist
   if (user?.rol !== 'ODONTOLOGO') {
     return null;
   }
 
+  const ratingPromedio = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length).toFixed(1)
+    : null;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#457B9D' }}>
-          Panel · Mi Perfil
-        </p>
-        <h1 className="text-3xl font-bold mt-1" style={{ color: '#1D3557' }}>
-          Mi Biografía Profesional
-        </h1>
-        <p className="text-sm mt-2 text-gray-600">
-          Cuéntales a tus pacientes sobre tu experiencia, especialidades y filosofía profesional.
-        </p>
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Mi Perfil"
+        title="Biografía Profesional"
+        subtitle="Cuéntales a tus pacientes sobre tu experiencia, especialidades y filosofía profesional"
+        icon={<UserCircleIcon className="h-6 w-6" />}
+      />
+
+      {/* Stat row: biografia estado + rating promedio */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card-base p-5">
+          <p className="text-[10px] font-semibold text-namay-steel uppercase tracking-[0.1em]">Estado</p>
+          <div className="mt-2 flex items-center gap-2">
+            {biografiaGuardada ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" />
+                <p className="text-sm font-semibold text-namay-navy">Publicada</p>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-warning-500" />
+                <p className="text-sm font-semibold text-namay-navy">Sin publicar</p>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="card-base p-5">
+          <p className="text-[10px] font-semibold text-namay-steel uppercase tracking-[0.1em]">Reseñas</p>
+          <p className="mt-2 text-2xl font-bold text-namay-navy tabular">{reviews.length}</p>
+        </div>
+        <div className="card-base p-5 bg-gradient-to-br from-namay-navy to-namay-steel">
+          <p className="text-[10px] font-semibold text-white/60 uppercase tracking-[0.1em]">Rating promedio</p>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <p className="text-2xl font-bold text-white tabular">
+              {ratingPromedio ?? '—'}
+            </p>
+            {ratingPromedio && <StarIcon className="h-4 w-4 text-namay-coral" />}
+          </div>
+        </div>
       </div>
 
-      {/* Modo Visualización (Biografía Guardada) */}
+      {/* Mensaje de éxito flotante */}
+      {success && (
+        <div className="flex items-center gap-2 p-3 rounded-btn text-sm bg-success-50 text-success-700 border border-success-100 animate-fade-in">
+          <CheckCircleIcon className="h-4 w-4 flex-shrink-0" />
+          {success}
+        </div>
+      )}
+
+      {/* Modo Visualización */}
       {!isEditing && biografiaGuardada && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+        <div className="card-base p-6 space-y-4">
           <div>
-            <p className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: '#1D3557' }}>
-              <CheckCircleIcon className="h-5 w-5" style={{ color: '#16A34A' }} />
-              Biografía Guardada
+            <p className="flex items-center gap-2 text-sm font-semibold mb-3 text-namay-navy">
+              <CheckCircleIcon className="h-5 w-5 text-success-500" />
+              Biografía publicada
             </p>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <p className="text-base leading-relaxed text-gray-700 whitespace-pre-wrap">
+            <div className="bg-namay-cream/40 rounded-card p-5 border border-namay-steel/10">
+              <p className="text-base leading-relaxed text-namay-navy whitespace-pre-wrap">
                 {biografiaGuardada}
               </p>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-namay-steel mt-2 tabular">
               {biografiaGuardada.length} / {MAX_CHARS} caracteres
             </p>
           </div>
 
-          {/* Buttons - Modo Visualización */}
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={() => {
                 setBiografia(biografiaGuardada);
                 setIsEditing(true);
               }}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-white font-semibold transition-all hover:shadow-md"
-              style={{ backgroundColor: '#457B9D' }}
+              className="btn-primary"
             >
-              <PencilSquareIcon className="h-5 w-5" />
+              <PencilSquareIcon className="h-4 w-4" />
               Actualizar Biografía
             </button>
             <button
               onClick={() => router.push('/dashboard')}
-              className="px-6 py-2.5 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              className="btn-cancel"
             >
               Volver
             </button>
@@ -174,38 +210,45 @@ export default function DentistBiographyPage() {
 
       {/* Reseñas de pacientes */}
       {!isEditing && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+        <div className="card-base p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>
+            <p className="text-sm font-semibold text-namay-navy">
               Reseñas de pacientes
             </p>
-            <p className="text-sm text-gray-500">
+            <StatusBadge variant="info">
               {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
-            </p>
+            </StatusBadge>
           </div>
 
           {reviewsLoading ? (
-            <p className="text-sm text-gray-600">Cargando reseñas...</p>
+            <div className="flex items-center justify-center py-6">
+              <div className="spinner-namay" />
+            </div>
           ) : reviews.length === 0 ? (
-            <p className="text-sm text-gray-600">No hay reseñas aún. Las reseñas de pacientes aparecerán aquí cuando se publiquen desde la app móvil.</p>
+            <div className="text-center py-8 text-namay-steel text-sm">
+              <StarIcon className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+              No hay reseñas aún. Las reseñas de pacientes aparecerán aquí cuando se publiquen desde la app móvil.
+            </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {reviews.map((review) => (
-                <div key={review.id} className="rounded-xl border border-gray-200 p-4">
+                <div key={review.id} className="rounded-card border border-gray-100 p-4 hover:border-namay-steel/30 hover:shadow-card transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-1 text-yellow-500">
+                    <div className="flex items-center gap-1.5 text-namay-coral">
                       {Array.from({ length: Math.max(0, Number(review.rating) || 0) }).map((_, index) => (
-                        <StarIcon key={index} className="h-4 w-4" />
+                        <StarIcon key={index} className="h-4 w-4 fill-current" />
                       ))}
-                      <span className="text-sm font-semibold text-gray-700">{review.rating}/5</span>
+                      <span className="text-sm font-bold text-namay-navy ml-1 tabular">{review.rating}/5</span>
                     </div>
-                    <span className="text-xs text-gray-500">{review.creado_en ? new Date(review.creado_en).toLocaleDateString('es-PE') : ''}</span>
+                    <span className="text-xs text-namay-steel tabular">
+                      {review.creado_en ? new Date(review.creado_en).toLocaleDateString('es-PE') : ''}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-800 mt-3">
+                  <p className="text-sm text-namay-navy mt-3 leading-relaxed">
                     {review.comentario || 'Sin comentario'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-3">
-                    Paciente: {review.pacientes?.nombre || 'Anónimo'} {review.pacientes?.apellido || ''}
+                  <p className="text-xs text-namay-steel mt-3 pt-3 border-t border-gray-100">
+                    Paciente: <span className="font-semibold text-namay-navy">{review.pacientes?.nombre || 'Anónimo'} {review.pacientes?.apellido || ''}</span>
                   </p>
                 </div>
               ))}
@@ -214,68 +257,60 @@ export default function DentistBiographyPage() {
         </div>
       )}
 
-      {/* Modo Edición o Sin Biografía */}
+      {/* Modo Edición */}
       {(isEditing || !biografiaGuardada) && (
-        <form onSubmit={handleSubmit} className={`bg-white rounded-xl border shadow-sm p-6 space-y-6 ${isEditing ? 'border-[#457B9D]' : 'border-gray-100'}`}>
-          {/* Textarea */}
+        <form onSubmit={handleSubmit} className={`card-base p-6 space-y-6 ${isEditing ? 'ring-2 ring-namay-coral/30' : ''}`}>
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold mb-3" style={{ color: '#1D3557' }}>
-              <DocumentTextIcon className="h-5 w-5" style={{ color: '#457B9D' }} />
+            <label className="flex items-center gap-2 label-base">
+              <DocumentTextIcon className="h-4 w-4" />
               {isEditing ? 'Editar Biografía' : 'Mi Biografía Profesional'}
             </label>
             <textarea
               value={biografia}
               onChange={(e) => setBiografia(e.target.value.slice(0, MAX_CHARS))}
               placeholder="Cuéntale a tus pacientes sobre tu experiencia, especialidades, certificaciones, y filosofía profesional..."
-              className="w-full h-56 p-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#457B9D] focus:border-transparent resize-none text-base"
+              className="input-base h-56 resize-none text-base leading-relaxed"
             />
             <div className="mt-2 flex items-center justify-between text-sm">
-              <p className="text-gray-600">
-                <span className="font-semibold">{biografia.length}</span>
+              <p className="text-namay-steel">
+                <span className="font-bold text-namay-navy tabular">{biografia.length}</span>
                 <span className="text-gray-400"> / {MAX_CHARS} caracteres</span>
               </p>
               {biografia.length > 900 && (
-                <div className="flex items-center gap-1" style={{ color: '#E63946' }}>
-                  <ExclamationCircleIcon className="h-4 w-4" />
+                <StatusBadge variant="warning">
+                  <ExclamationCircleIcon className="h-3 w-3" />
                   Casi al límite
-                </div>
+                </StatusBadge>
               )}
             </div>
           </div>
 
-          {/* Messages */}
           {error && (
-            <div className="p-4 rounded-lg flex items-start gap-3" style={{ backgroundColor: '#FEE2E2' }}>
-              <ExclamationCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: '#E63946' }} />
-              <p className="text-sm" style={{ color: '#E63946' }}>
-                {error}
-              </p>
+            <div className="flex items-start gap-3 p-4 rounded-btn bg-danger-50 text-danger-700 border border-danger-100 animate-fade-in">
+              <ExclamationCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
-          {success && (
-            <div className="p-4 rounded-lg flex items-start gap-3" style={{ backgroundColor: '#DCFCE7' }}>
-              <CheckCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: '#16A34A' }} />
-              <p className="text-sm" style={{ color: '#16A34A' }}>
-                {success}
-              </p>
-            </div>
-          )}
-
-          {/* Buttons - Modo Edición */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-lg text-white font-semibold transition-all disabled:opacity-50"
-              style={{ backgroundColor: '#457B9D' }}
+              className="btn-primary"
             >
-              {saving ? 'Guardando...' : 'Guardar Biografía'}
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar Biografía'
+              )}
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="px-6 py-2.5 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              className="btn-cancel"
             >
               {biografiaGuardada ? 'Cancelar' : 'Volver'}
             </button>
@@ -284,14 +319,17 @@ export default function DentistBiographyPage() {
       )}
 
       {/* Info box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-        <p className="text-sm font-semibold" style={{ color: '#1E40AF' }}>
-          💡 Consejo profesional
-        </p>
-        <p className="text-sm text-gray-700">
-          Tu biografía será visible para los pacientes en la app móvil cuando busquen información sobre ti. 
-          Asegúrate de incluir tu experiencia, especialidades principales y lo que te hace único como profesional.
-        </p>
+      <div className="flex gap-3 p-4 rounded-card bg-info-50 border border-info-100">
+        <div className="flex-shrink-0 w-9 h-9 rounded-btn bg-info-100 flex items-center justify-center">
+          <LightBulbIcon className="h-4 w-4 text-info-600" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-info-700">Consejo profesional</p>
+          <p className="text-sm text-namay-navy mt-1 leading-relaxed">
+            Tu biografía será visible para los pacientes en la app móvil cuando busquen información sobre ti.
+            Asegúrate de incluir tu experiencia, especialidades principales y lo que te hace único como profesional.
+          </p>
+        </div>
       </div>
     </div>
   );

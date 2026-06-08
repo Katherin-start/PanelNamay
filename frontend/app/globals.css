@@ -21,7 +21,7 @@
     margin: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #F1F4F9;
+    background-color: #FFFFFF;
     color: #1F2937;
   }
 
@@ -39,91 +39,115 @@
 @layer components {
   /* ── Botones ─────────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-btn
-           bg-namay-coral shadow-coral transition-all duration-150
-           hover:bg-namay-coral/90 hover:shadow-md
-           focus:outline-none focus:ring-2 focus:ring-namay-coral/40 focus:ring-offset-1
-           disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-hair
+           bg-namay-navy transition-colors duration-200
+           hover:bg-namay-coral
+           focus:outline-none focus:ring-1 focus:ring-namay-coral/40 focus:ring-offset-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-btn
-           bg-namay-navy transition-all duration-150
-           hover:bg-namay-navy/90
-           focus:outline-none focus:ring-2 focus:ring-namay-navy/40 focus:ring-offset-1
-           disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-namay-navy rounded-hair
+           bg-white border border-gray-200 transition-colors duration-200
+           hover:border-namay-navy hover:text-namay-navy
+           focus:outline-none focus:ring-1 focus:ring-namay-navy/30 focus:ring-offset-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-steel {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-white rounded-btn
-           bg-namay-steel transition-all duration-150
-           hover:bg-namay-steel/90
-           focus:outline-none focus:ring-2 focus:ring-namay-steel/40
-           disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-namay-steel rounded-hair
+           border border-namay-steel/30 bg-white transition-colors duration-200
+           hover:bg-namay-steel/5 hover:border-namay-steel
+           focus:outline-none focus:ring-1 focus:ring-namay-steel/30
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-btn
-           border border-namay-steel/30 text-namay-steel bg-white transition-all duration-150
-           hover:bg-namay-steel/5 hover:border-namay-steel/60
-           focus:outline-none focus:ring-2 focus:ring-namay-steel/30;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-hair
+           text-namay-steel bg-transparent transition-colors duration-200
+           hover:bg-gray-50
+           focus:outline-none focus:ring-1 focus:ring-namay-steel/30;
   }
 
   .btn-cancel {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 rounded-btn
-           bg-gray-100 transition-all duration-150
-           hover:bg-gray-200
-           focus:outline-none focus:ring-2 focus:ring-gray-300;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-namay-steel/70 rounded-hair
+           bg-transparent transition-colors duration-200
+           hover:text-namay-navy
+           focus:outline-none focus:ring-1 focus:ring-gray-300;
   }
 
-  /* ── Inputs / Selects / Textareas ──────────────── */
+  /* ── Inputs / Selects / Textareas (minimal underline style) ── */
   .input-base {
-    @apply w-full px-3 py-2.5 text-sm border border-gray-200 rounded-btn bg-white
-           focus:outline-none focus:ring-2 focus:ring-namay-steel/40 focus:border-namay-steel
-           placeholder:text-gray-400 transition-all duration-150;
+    @apply w-full px-3 py-2.5 text-[15px] text-namay-navy bg-white
+           border border-gray-200 rounded-hair
+           focus:outline-none focus:border-namay-coral focus:ring-0
+           placeholder:text-gray-300 transition-colors duration-200;
+  }
+
+  .input-underline {
+    @apply w-full px-0 py-2.5 text-[15px] text-namay-navy bg-transparent
+           border-0 border-b border-gray-200 rounded-none
+           focus:outline-none focus:border-namay-coral focus:ring-0
+           placeholder:text-gray-300 transition-colors duration-200;
   }
 
   .input-search {
-    @apply w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-btn
-           focus:outline-none focus:ring-2 focus:ring-namay-steel/40 focus:bg-white focus:border-namay-steel
-           placeholder:text-gray-400 transition-all duration-150;
+    @apply w-full pl-9 pr-4 py-2 text-sm bg-transparent text-namay-navy
+           border-0 border-b border-gray-200 rounded-none
+           focus:outline-none focus:border-namay-coral focus:ring-0
+           placeholder:text-gray-300 transition-colors duration-200;
   }
 
-  /* ── Cards ─────────────────────────────────────── */
+  /* ── Cards (sin sombras pesadas) ───────────────── */
   .card-base {
-    @apply bg-white rounded-card border border-gray-100 shadow-card;
+    @apply bg-white rounded-card border border-gray-100;
   }
 
   .card-flat {
     @apply bg-white rounded-card border border-gray-100;
   }
 
+  .card-stat {
+    @apply bg-white rounded-card border border-gray-100 p-6 transition-colors duration-200
+           hover:border-namay-navy/20;
+  }
+
   /* ── Tablas ────────────────────────────────────── */
   .table-header {
-    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500;
+    @apply px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.15em] text-namay-steel/60 border-b border-gray-100;
   }
 
   .table-cell {
-    @apply px-4 py-3 text-sm;
+    @apply px-4 py-3.5 text-sm text-namay-navy border-b border-gray-50;
   }
 
   /* ── Labels de formulario ─────────────────────── */
   .label-base {
-    @apply block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide;
+    @apply block text-[10px] font-semibold text-namay-steel/70 mb-2 uppercase tracking-[0.2em];
+  }
+
+  /* ── Eyebrow text (eyebrow superior de headers) ── */
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.25em] text-namay-coral;
   }
 
   /* ── Spinner de carga ─────────────────────────── */
   .spinner-namay {
-    @apply animate-spin rounded-full h-10 w-10 border-4 border-namay-steel/30 border-t-namay-coral;
+    @apply animate-spin rounded-full h-8 w-8 border-2 border-namay-steel/20 border-t-namay-coral;
   }
 
   /* ── Badge base ───────────────────────────────── */
   .badge-base {
-    @apply inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full;
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-full uppercase tracking-[0.1em];
   }
 
   /* ── Avatar circular con iniciales ────────────── */
   .avatar-initials {
-    @apply flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 rounded-full;
+    @apply flex items-center justify-center text-white text-sm font-medium flex-shrink-0 rounded-full;
+  }
+
+  /* ── Hairline divider (línea 1px sutil) ──────── */
+  .hairline {
+    @apply border-t border-gray-100;
   }
 }
