@@ -165,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <img
             src="/logonamay.png"
             alt="Dental Namay"
-            className="h-8 w-auto object-contain brightness-0 invert"
+            className="h-12 w-auto object-contain brightness-0 invert"
           />
           <button
             onClick={() => setSidebarOpen(false)}
@@ -248,7 +248,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
           <div className="lg:hidden flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logonamay.png" alt="Dental Namay" className="h-6 w-auto object-contain" />
+            <img src="/logonamay.png" alt="Dental Namay" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="flex-1 max-w-sm hidden sm:block">

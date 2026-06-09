@@ -35,16 +35,16 @@ export default function LoginForm() {
   return (
     <div className="min-h-screen flex bg-white">
       {/* Left minimal panel */}
-      <div className="hidden lg:flex lg:w-[42%] flex-col justify-between p-16 bg-namay-navy relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[42%] flex-col justify-start pt-40 pb-16 px-16 bg-namay-navy relative overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[28rem] h-[28rem] rounded-full bg-namay-steel/10 blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-[24rem] h-[24rem] rounded-full bg-namay-coral/10 blur-3xl" />
 
-        <div className="relative z-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logonamay.png" alt="Dental Namay" className="h-10 w-auto object-contain brightness-0 invert" />
-        </div>
-
         <div className="relative z-10 max-w-sm">
+          <div className="mb-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logonamay.png" alt="Dental Namay" className="h-16 w-auto object-contain brightness-0 invert" />
+          </div>
+
           <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-namay-coral/90 mb-6">
             Odontología Integral
           </p>
@@ -69,7 +69,7 @@ export default function LoginForm() {
           {/* Mobile logo */}
           <div className="lg:hidden mb-12">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logonamay.png" alt="Dental Namay" className="h-9 w-auto object-contain" />
+            <img src="/logonamay.png" alt="Dental Namay" className="h-14 w-auto object-contain" />
           </div>
 
           <div className="mb-10">
