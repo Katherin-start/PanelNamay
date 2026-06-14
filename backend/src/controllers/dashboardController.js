@@ -59,7 +59,7 @@ const getDashboardMetrics = async (req, res) => {
 
     const normalizeCitasRows = (rows = []) => (rows || []).map((cita) => ({
       ...cita,
-      id_paciente: cita.id_paciente ?? cita.paciente_id,
+      id_paciente: cita.id_paciente ?? cita.paciente_id ?? cita.id_paciente_uuid,
       id_odontologo: cita.id_odontologo ?? cita.odontologo_id,
     }));
 
@@ -74,6 +74,12 @@ const getDashboardMetrics = async (req, res) => {
         {
           select: selectFields.map((field) => field
             .replace(/id_paciente/g, 'paciente_id')
+            .replace(/id_odontologo/g, 'odontologo_id')).join(','),
+          odontologoField: 'odontologo_id'
+        },
+        {
+          select: selectFields.map((field) => field
+            .replace(/id_paciente/g, 'id_paciente_uuid')
             .replace(/id_odontologo/g, 'odontologo_id')).join(','),
           odontologoField: 'odontologo_id'
         }
@@ -364,17 +370,17 @@ const getDashboardMetrics = async (req, res) => {
         pagosEfectuadosRes
       ] = await Promise.all([
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre)')
+          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero')
           .eq('fecha_pago', today)
           .in('estado', ['pagado', 'completado'])
           .order('fecha_pago', { ascending: true }),
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero, usuarios:paciente_id(nombre)')
+          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero')
           .in('estado', ['pagado', 'completado'])
           .order('fecha_pago', { ascending: false })
           .limit(50),
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, paciente_id, descripcion, metodo, referencia, usuarios:paciente_id(nombre)')
+          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia')
           .in('estado', ['pendiente', 'por_pagar', 'no_pagado', 'pendiente_pago'])
           .order('fecha_pago', { ascending: true })
           .limit(50),
@@ -383,10 +389,9 @@ const getDashboardMetrics = async (req, res) => {
           .in('estado', ['en_curso', 'pendiente'])
           .order('fecha_inicio', { ascending: false }),
         supabase.from('pagos')
-          .select('paciente_id, monto, estado')
+          .select('id_paciente, paciente_id, monto, estado')
           .in('estado', ['pagado', 'completado'])
       ]);
-
       const pagosHoy = pagosHoyRes.data || [];
       const pagosRealizados = pagosRealizadosRes.data || [];
       const pagosPendientes = pagosPendientesRes.data || [];
@@ -394,7 +399,7 @@ const getDashboardMetrics = async (req, res) => {
       const pagosEfectuados = pagosEfectuadosRes.data || [];
 
       const pagosPorPaciente = pagosEfectuados.reduce((map, pago) => {
-        const pacienteId = pago.paciente_id;
+        const pacienteId = pago.id_paciente || pago.paciente_id;
         const monto = parseFloat(pago.monto) || 0;
         map[pacienteId] = (map[pacienteId] || 0) + monto;
         return map;
@@ -735,18 +740,19 @@ const getNotifications = async (req, res) => {
     if (userRole === 'CAJERO') {
       const { data: pagosPendientes } = await supabase
         .from('pagos')
-        .select('id, fecha_pago, monto, paciente_id, usuarios:paciente_id(nombre)')
+        .select('id, fecha_pago, monto, id_paciente, paciente_id')
         .in('estado', ['pendiente', 'por_pagar', 'no_pagado', 'pendiente_pago'])
         .lte('fecha_pago', new Date().toISOString().split('T')[0])
         .order('fecha_pago', { ascending: true })
         .limit(40);
 
       pagosPendientes?.forEach(pago => {
+        const pacienteId = pago.id_paciente || pago.paciente_id;
         notifications.push({
           id: `payment_pending_${pago.id}`,
           type: 'payment',
           title: 'Pago pendiente',
-          message: `Pago pendiente de ${pago.usuarios?.nombre || pago.paciente_id} por $${parseFloat(pago.monto || 0).toFixed(2)}`,
+          message: `Pago pendiente de ${pacienteId || 'paciente desconocido'} por $${parseFloat(pago.monto || 0).toFixed(2)}`,
           timestamp: new Date().toISOString(),
           priority: 'high'
         });

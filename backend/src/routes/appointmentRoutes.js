@@ -12,7 +12,7 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'PRACTICANTE']));
+router.use(roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE']));
 
 router.get('/', listAppointments);
 router.get('/:id', getAppointmentById);

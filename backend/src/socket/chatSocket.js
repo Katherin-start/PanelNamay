@@ -66,6 +66,22 @@ const initializeSocket = (server) => {
           connectedAt: new Date().toISOString(),
         });
 
+        // 🏷️ Obtener rol del usuario y agregarlo a la sala de su rol
+        const { data: usuario, error: usuarioError } = await supabase
+          .from('usuarios')
+          .select('id, rol_id, roles:rol_id(id, nombre)')
+          .eq('id', userId)
+          .single();
+
+        if (!usuarioError && usuario && usuario.roles) {
+          const roleName = usuario.roles.nombre.toUpperCase();
+          const roleRoom = `role_${roleName}`;
+          socket.join(roleRoom);
+          console.log(`✅ Usuario ${userId} se unió a sala de rol: ${roleRoom}`);
+        } else {
+          console.warn(`⚠️ No se pudo obtener rol del usuario ${userId}`);
+        }
+
         // ✅ Actualizar usuario como online
         await supabase
           .from('usuarios')

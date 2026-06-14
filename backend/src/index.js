@@ -16,6 +16,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const discountRoutes = require('./routes/discountRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 const setupRoutes = require('./routes/setupRoutes');
 // const alertRoutes = require('./routes/alertRoutes');
 
@@ -37,6 +38,7 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/api/services', serviceRoutes);
 app.use('/api/reports', reportRoutes);
 // app.use('/api/alerts', alertRoutes);
 

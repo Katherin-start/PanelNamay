@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -33,6 +34,7 @@ const allNavigation = [
   { name: 'Pacientes', href: '/pacientes', icon: UsersIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA'] },
   { name: 'Citas', href: '/citas', icon: CalendarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA'] },
   { name: 'Pagos', href: '/pagos', icon: CreditCardIcon, roles: ['ADMINISTRADOR', 'CAJERO'] },
+  { name: 'Comprobantes', href: '/comprobantes', icon: DocumentTextIcon, roles: ['CAJERO', 'RECEPCIONISTA'] },
   { name: 'Descuentos', href: '/descuentos', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   { name: 'Reportes', href: '/reportes', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'CAJERO', 'RECEPCIONISTA', 'PRACTICANTE'] },
   { name: 'Chat', href: '/chat', icon: ChatBubbleLeftRightIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE'] },
@@ -48,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, setUser, isLoading } = useAuth();
   const router = useRouter();
@@ -75,6 +78,57 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setNotifications(arr);
       }).catch(() => {});
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+      const socket = io(socketUrl);
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('Socket conectado:', socket.id);
+        socket.emit('join', user.id);
+      });
+
+      socket.on('new_mobile_appointment', (payload: any) => {
+        const appointmentLabel = payload?.appointment?.estado === 'pendiente' ? 'Solicitud de cita' : 'Cita programada';
+        setNotifications((prev) => [
+          {
+            id: `mobile_app_${Date.now()}`,
+            title: 'Nueva cita desde App Móvil',
+            message: `${appointmentLabel} para ${payload.appointment.fecha} ${payload.appointment.hora}`,
+            fecha: new Date().toISOString(),
+            read: false,
+            data: payload,
+          },
+          ...prev,
+        ]);
+      });
+
+      socket.on('payment_proof_uploaded', (payload: any) => {
+        setNotifications((prev) => [
+          {
+            id: `payment_proof_${Date.now()}`,
+            title: 'Comprobante de pago subido',
+            message: `Pago ID ${payload.payment?.id ?? ''} por validar`,
+            fecha: new Date().toISOString(),
+            read: false,
+            data: payload,
+          },
+          ...prev,
+        ]);
+      });
+
+    } catch (e) {
+      console.error('Error inicializando socket en DashboardLayout:', e);
+    }
+
+    return () => {
+      try { socketRef.current?.disconnect(); } catch (e) {}
+      socketRef.current = null;
+    };
   }, [user]);
 
   useEffect(() => {

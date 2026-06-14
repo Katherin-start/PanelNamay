@@ -9,6 +9,9 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   CalendarIcon,
+  CheckIcon,
+  XMarkIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -31,6 +34,9 @@ export default function PaymentsPage() {
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [payForm, setPayForm] = useState({ monto: '', descripcion: '', metodo: 'efectivo', fecha_pago: '', estado: 'completado', descuento_id: '' });
 
   useEffect(() => {
@@ -67,6 +73,7 @@ export default function PaymentsPage() {
   );
 
   const canApplyDiscount = ['ADMINISTRADOR', 'CAJERO'].includes(user?.rol ?? '');
+  const canValidatePayments = ['ADMINISTRADOR', 'CAJERO', 'RECEPCIONISTA'].includes(user?.rol ?? '');
   const selectedDiscount = discounts.find((d) => d.id === payForm.descuento_id);
   const baseAmount = Number(payForm.monto) || 0;
   const discountAmount = selectedDiscount
@@ -95,6 +102,38 @@ export default function PaymentsPage() {
       setFormError(err.message ?? 'Error al registrar el pago.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const closeDetailModal = () => setSelectedPayment(null);
+
+  const handleValidatePayment = async (status: 'APROBADO' | 'RECHAZADO') => {
+    if (!selectedPayment) return;
+    setValidating(true);
+    try {
+      const updated = await apiClient.validatePayment(selectedPayment.id, status);
+      setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
+      setSelectedPayment(updated);
+    } catch (err: any) {
+      console.error('Error validando pago:', err);
+      window.alert(err?.message ?? 'No se pudo actualizar el estado del pago.');
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleDeleteProof = async () => {
+    if (!selectedPayment) return;
+    setValidating(true);
+    try {
+      const updated = await apiClient.deletePaymentProof(selectedPayment.id);
+      setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
+      setSelectedPayment(updated);
+    } catch (err: any) {
+      console.error('Error eliminando comprobante:', err);
+      window.alert(err?.message ?? 'No se pudo eliminar el comprobante.');
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -190,7 +229,11 @@ export default function PaymentsPage() {
                 </tr>
               ) : (
                 filtered.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr
+                    key={payment.id}
+                    className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                    onClick={() => setSelectedPayment(payment)}
+                  >
                     <td className="table-cell">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0 bg-namay-navy">
@@ -355,6 +398,121 @@ export default function PaymentsPage() {
         </div>
       </form>
     </Modal>
+
+    {selectedPayment && (
+      <Modal
+        open={!!selectedPayment}
+        onClose={closeDetailModal}
+        title={`Pago #${selectedPayment.id}`}
+        icon={<CurrencyDollarIcon className="h-4 w-4 text-namay-navy" />}
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-gray-100 p-4 bg-slate-50">
+              <p className="text-[11px] font-semibold text-namay-steel uppercase tracking-[0.25em]">Paciente</p>
+              <p className="mt-2 text-sm font-semibold text-namay-navy">{selectedPayment.paciente_nombre}</p>
+              <p className="mt-1 text-sm text-namay-steel">{selectedPayment.servicio || 'Pago registrado'}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 p-4 bg-slate-50">
+              <p className="text-[11px] font-semibold text-namay-steel uppercase tracking-[0.25em]">Monto total</p>
+              <p className="mt-2 text-2xl font-semibold text-namay-navy">S/ {(Number(selectedPayment.monto_final ?? selectedPayment.monto) || 0).toFixed(2)}</p>
+              <p className="mt-1 text-sm text-namay-steel">Método: {methodLabels[selectedPayment.metodo_pago] || selectedPayment.metodo_pago}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-gray-100 p-4 bg-white">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-namay-steel">Estado</p>
+              <StatusBadge status={selectedPayment.estado} kind="payment" />
+            </div>
+            <div className="rounded-2xl border border-gray-100 p-4 bg-white">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-namay-steel">Validación</p>
+              <p className="mt-2 text-sm font-semibold text-namay-navy">{selectedPayment.estado_validacion || 'Sin validación'}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 p-4 bg-white">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-namay-steel">Fecha</p>
+              <p className="mt-2 text-sm font-semibold text-namay-navy">{new Date(selectedPayment.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-gray-100 bg-slate-50 p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-namay-navy">
+              <PhotoIcon className="h-4 w-4" />
+              <span>Comprobante de pago</span>
+            </div>
+            {selectedPayment.comprobante ? (
+              <a
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/payments/${selectedPayment.id}/proof`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/payments/${selectedPayment.id}/proof`}
+                  alt="Comprobante de pago"
+                  className="w-full max-h-96 object-contain rounded-2xl border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                />
+              </a>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-namay-steel">
+                No se encontró ninguna captura de comprobante.
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => window.open(apiClient.getPaymentReceiptUrl(selectedPayment.id), '_blank')}
+                className="btn-secondary"
+              >
+                Emitir boleta
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open(apiClient.getPaymentInvoiceUrl(selectedPayment.id), '_blank')}
+                className="btn-secondary"
+              >
+                Emitir factura
+              </button>
+            </div>
+
+            {selectedPayment.comprobante && canValidatePayments && (
+              <button
+                type="button"
+                onClick={handleDeleteProof}
+                className="btn-secondary text-danger-700 border-danger-200 hover:bg-danger-50"
+                disabled={validating}
+              >
+                {validating ? 'Eliminando...' : 'Eliminar comprobante'}
+              </button>
+            )}
+          </div>
+
+          {(canValidatePayments && selectedPayment.estado === 'pendiente') && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => handleValidatePayment('RECHAZADO')}
+                className="btn-secondary w-full sm:w-auto"
+                disabled={validating}
+              >
+                {validating ? 'Actualizando...' : 'Rechazar pago'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleValidatePayment('APROBADO')}
+                className="btn-primary w-full sm:w-auto"
+                disabled={validating}
+              >
+                {validating ? 'Actualizando...' : 'Confirmar pago'}
+              </button>
+            </div>
+          )}
+        </div>
+      </Modal>
+    )}
     </>
   );
 }

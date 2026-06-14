@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { getIO } = require('../socket/chatSocket');
 
 const listAppointments = async (req, res) => {
   try {
@@ -8,12 +9,10 @@ const listAppointments = async (req, res) => {
 
     let query = supabase
       .from('citas')
-      .select(
-        'id, fecha, hora, estado, id_paciente, id_odontologo, pacientes:id_paciente(nombre), usuarios:id_odontologo(nombre)'
-      );
+      .select('*, odontologo:id_odontologo(id, nombre, apellido, foto_perfil)');
 
     if (estado) query = query.eq('estado', estado);
-    if (paciente_id) query = query.eq('id_paciente', paciente_id);
+    if (paciente_id) query = query.eq('id_paciente_uuid', paciente_id);
     if (odontologo_id) query = query.eq('id_odontologo', odontologo_id);
     if (fecha) query = query.eq('fecha', fecha);
     if (fecha_inicio) query = query.gte('fecha', fecha_inicio);
@@ -23,10 +22,23 @@ const listAppointments = async (req, res) => {
       query = query.eq('id_odontologo', currentUserId);
     }
 
-    const { data, error } = await query.order('fecha', { ascending: true }).order('hora', { ascending: true });
+    const { data, error } = await query
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
 
     if (error) {
-      return res.status(500).json({ message: 'Error al listar citas', error: error.message, code: 'APPOINTMENTS_LIST_ERROR' });
+      console.error('[listAppointments] Join error:', error.message, '— reintentando sin join');
+      // Si el join falla, reintentar sin join
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('citas')
+        .select('*')
+        .order('fecha', { ascending: true })
+        .order('hora', { ascending: true });
+
+      if (fallbackError) {
+        return res.status(500).json({ message: 'Error al listar citas', error: fallbackError.message, code: 'APPOINTMENTS_LIST_ERROR' });
+      }
+      return res.json({ code: 'APPOINTMENTS_LIST_SUCCESS', data: fallback || [] });
     }
 
     res.json({ code: 'APPOINTMENTS_LIST_SUCCESS', data: data || [] });
@@ -38,11 +50,24 @@ const listAppointments = async (req, res) => {
 const getAppointmentById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
+
+    let data, error;
+
+    // Intentar con join de odontologo
+    ({ data, error } = await supabase
       .from('citas')
-      .select('id, fecha, hora, estado, id_paciente, id_odontologo, pacientes:id_paciente(nombre), usuarios:id_odontologo(nombre)')
+      .select('*, odontologo:id_odontologo(id, nombre, apellido, foto_perfil)')
       .eq('id', id)
-      .single();
+      .single());
+
+    // Si falla el join, usar select básico
+    if (error) {
+      ({ data, error } = await supabase
+        .from('citas')
+        .select('*')
+        .eq('id', id)
+        .single());
+    }
 
     if (error) {
       return res.status(500).json({ message: 'Error al obtener cita', error: error.message, code: 'APPOINTMENT_GET_ERROR' });
@@ -60,9 +85,13 @@ const getAppointmentById = async (req, res) => {
 
 const createAppointment = async (req, res) => {
   try {
-    const { fecha, hora, id_paciente, id_odontologo, paciente_id, odontologo_id, estado = 'programada', fecha_hora } = req.body;
+    const {
+      fecha, hora, estado = 'programada', fecha_hora,
+      id_paciente_uuid, id_paciente, paciente_id,
+      id_odontologo, odontologo_id,
+    } = req.body;
 
-    const finalPacienteId = id_paciente ?? paciente_id ?? null;
+    const finalPacienteUuid = id_paciente_uuid ?? id_paciente ?? paciente_id ?? null;
     const finalOdontologoId = id_odontologo ?? odontologo_id ?? null;
 
     let finalFecha = fecha;
@@ -80,9 +109,9 @@ const createAppointment = async (req, res) => {
     const payload = {
       fecha: finalFecha,
       hora: finalHora,
-      id_paciente: finalPacienteId,
-      id_odontologo: finalOdontologoId,
       estado,
+      ...(finalPacienteUuid && { id_paciente_uuid: finalPacienteUuid }),
+      ...(finalOdontologoId && { id_odontologo: finalOdontologoId }),
     };
 
     const { data, error } = await supabase.from('citas').insert([payload]).select('*').single();
@@ -100,34 +129,58 @@ const createAppointment = async (req, res) => {
 const updateAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fecha, hora, id_paciente, id_odontologo, paciente_id, odontologo_id, estado } = req.body;
+    const { estado, fecha, hora } = req.body;
 
-    const updates = {
-      fecha,
-      hora,
-      id_paciente: id_paciente ?? paciente_id,
-      id_odontologo: id_odontologo ?? odontologo_id,
-      estado,
-    };
+    // Solo actualizar columnas que con certeza existen y son seguras
+    const updates = {};
+    if (estado != null) updates.estado = estado;
+    if (fecha != null) updates.fecha = fecha;
+    if (hora != null) updates.hora = hora;
 
-    const filteredUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
-      if (value !== undefined) acc[key] = value;
-      return acc;
-    }, {});
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No hay campos para actualizar', code: 'NO_FIELDS' });
+    }
+
+    console.log(`[updateAppointment] id=${id} updates=`, updates);
 
     const { data, error } = await supabase
       .from('citas')
-      .update(filteredUpdates)
+      .update(updates)
       .eq('id', id)
       .select('*')
       .single();
 
     if (error) {
-      return res.status(500).json({ message: 'Error al actualizar cita', error: error.message, code: 'APPOINTMENT_UPDATE_ERROR' });
+      console.error('[updateAppointment] Supabase error:', error);
+      return res.status(500).json({
+        message: 'Error al actualizar cita',
+        error: error.message,
+        code: 'APPOINTMENT_UPDATE_ERROR',
+      });
+    }
+
+    // Notificar al paciente en tiempo real vía Socket.IO
+    const patientId = data.id_paciente_uuid;
+    if (patientId && updates.estado) {
+      try {
+        const io = getIO();
+        io.to(`user_${patientId}`).emit('appointment_status_changed', {
+          appointmentId: data.id,
+          status: data.estado,
+          fecha: data.fecha,
+          hora: data.hora,
+          message: `Tu cita del ${data.fecha} a las ${data.hora} ha sido ${data.estado}`,
+          timestamp: new Date().toISOString(),
+        });
+        console.log(`[updateAppointment] Notificación enviada al paciente ${patientId}: ${data.estado}`);
+      } catch (socketErr) {
+        console.warn('[updateAppointment] Error enviando socket:', socketErr?.message);
+      }
     }
 
     res.json({ code: 'APPOINTMENT_UPDATED', data });
   } catch (err) {
+    console.error('[updateAppointment] Error:', err);
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
 };

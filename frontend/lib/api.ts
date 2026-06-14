@@ -216,7 +216,7 @@ class ApiClient {
       paciente_id:      a.paciente_id      ?? a.id_paciente ?? '',
       doctor_id:        a.doctor_id        ?? a.id_odontologo ?? '',
       fecha_hora:      a.fecha_hora      ?? (a.fecha && a.hora ? `${a.fecha}T${a.hora}` : a.fecha ?? ''),
-      paciente_nombre: a.paciente_nombre ?? a.pacientes?.nombre ?? '',
+      paciente_nombre: a.paciente_nombre ?? a.pacientes?.nombre ?? a.pacientes_uuid?.nombre ?? '',
       doctor_nombre:   a.doctor_nombre   ?? a.usuarios?.nombre   ?? '',
       servicio:        a.servicio        ?? a.descripcion ?? 'Consulta dental',
     };
@@ -259,7 +259,7 @@ class ApiClient {
     return {
       ...p,
       paciente_id:     p.paciente_id     ?? p.id_paciente ?? '',
-      paciente_nombre: p.paciente_nombre ?? p.pacientes?.nombre ?? p.usuarios?.nombre ?? '',
+      paciente_nombre: p.paciente_nombre ?? p.pacientes?.nombre ?? p.pacientes_uuid?.nombre ?? p.usuarios?.nombre ?? '',
       metodo_pago:     p.metodo_pago     ?? p.metodo     ?? '',
       fecha:           p.fecha           ?? p.fecha_pago ?? '',
       monto:           Number(p.monto) || 0,
@@ -271,12 +271,53 @@ class ApiClient {
       descuento_valor: Number(p.descuento_valor) || Number(p.discount_value) || 0,
       monto_descuento: Number(p.monto_descuento) || Number(p.discount_amount) || 0,
       monto_final:     Number(p.monto_final) || Number(p.total) || Number(p.monto) || 0,
+      qr_imagen:       p.qr_imagen ?? p.comprobante ?? p.proof_url ?? '',
+      comprobante:     p.qr_imagen ?? p.comprobante ?? p.proof_url ?? '',
+      estado_validacion: p.estado_validacion ?? p.validation_status ?? '',
     };
   }
 
   async getPayments() {
     const res = await this.request('/payments');
     const arr: any[] = Array.isArray(res) ? res : (res?.data ?? res?.payments ?? []);
+    return arr.map((p: any) => this.normalizePayment(p));
+  }
+
+  async getPaymentDetails(id: string) {
+    const res = await this.request(`/payments/${id}`);
+    return this.normalizePayment(res?.payment ?? res?.data ?? res);
+  }
+
+  async validatePayment(id: string, estado_validacion: 'APROBADO' | 'RECHAZADO' | 'POR_CONFIRMAR') {
+    const res = await this.request(`/payments/${id}/validation`, {
+      method: 'PUT',
+      body: JSON.stringify({ estado_validacion }),
+    });
+    return this.normalizePayment(res?.payment ?? res?.data ?? res);
+  }
+
+  getPaymentReceiptUrl(id: string) {
+    const token = this.getToken();
+    const queryToken = token ? `?token=${token}` : '';
+    return `${this.baseURL}/payments/${id}/receipt${queryToken}`;
+  }
+
+  getPaymentInvoiceUrl(id: string) {
+    const token = this.getToken();
+    const queryToken = token ? `?token=${token}` : '';
+    return `${this.baseURL}/payments/${id}/invoice${queryToken}`;
+  }
+
+  async deletePaymentProof(id: string) {
+    const res = await this.request(`/payments/${id}/proof`, {
+      method: 'DELETE',
+    });
+    return this.normalizePayment(res?.payment ?? res?.data ?? res);
+  }
+
+  async getPendingValidationPayments() {
+    const res = await this.request('/payments/pending-validation');
+    const arr: any[] = Array.isArray(res) ? res : (res?.payments ?? res?.data ?? []);
     return arr.map((p: any) => this.normalizePayment(p));
   }
 
@@ -563,6 +604,47 @@ class ApiClient {
       return res;
     } catch (error: any) {
       console.error('❌ Error al cargar foto:', error);
+      throw error;
+    }
+  }
+
+  // 📄 PDF Download functions
+  async downloadPaymentReceipt(paymentId: string, filename?: string) {
+    const url = this.getPaymentReceiptUrl(paymentId);
+    return this.downloadPDF(url, filename || `boleta_${paymentId}.pdf`);
+  }
+
+  async downloadPaymentInvoice(paymentId: string, filename?: string) {
+    const url = this.getPaymentInvoiceUrl(paymentId);
+    return this.downloadPDF(url, filename || `factura_${paymentId}.pdf`);
+  }
+
+  private async downloadPDF(url: string, filename: string): Promise<void> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const text = await response.text();
+        let error = `Error ${response.status} al descargar PDF`;
+        try {
+          const json = JSON.parse(text);
+          error = json.message || json.error || error;
+        } catch (e) {
+          // No es JSON, usar error genérico
+        }
+        throw new Error(error);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error: any) {
+      console.error(`Error descargando PDF (${filename}):`, error);
       throw error;
     }
   }
