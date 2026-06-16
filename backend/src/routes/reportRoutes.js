@@ -6,6 +6,7 @@ const {
   generateAttendanceReport,
   generateAccumulatedHoursReport,
   generateTodayAppointmentsReport,
+  generateFinancialReport,
 } = require('../controllers/reportController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -22,5 +23,6 @@ router.get('/appointments', generateAppointmentsReport);
 router.get('/appointments/today', generateTodayAppointmentsReport);
 router.get('/attendance', generateAttendanceReport);
 router.get('/hours', generateAccumulatedHoursReport);
+router.get('/financial', generateFinancialReport);
 
 module.exports = router;

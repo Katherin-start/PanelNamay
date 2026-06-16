@@ -120,6 +120,24 @@ const createAppointment = async (req, res) => {
       return res.status(500).json({ message: 'Error al crear cita', error: error.message, code: 'APPOINTMENT_CREATE_ERROR' });
     }
 
+    // Notificar al paciente en la app móvil vía Socket.IO
+    if (finalPacienteUuid) {
+      try {
+        const io = getIO();
+        io.to(`user_${finalPacienteUuid}`).emit('new_mobile_appointment', {
+          appointmentId: data.id,
+          fecha: data.fecha,
+          hora: data.hora,
+          estado: data.estado,
+          servicio: req.body.servicio ?? 'Consulta dental',
+          message: `Tienes una nueva cita agendada para el ${data.fecha} a las ${data.hora}`,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (socketErr) {
+        console.warn('[createAppointment] Socket emit error:', socketErr?.message);
+      }
+    }
+
     res.status(201).json({ code: 'APPOINTMENT_CREATED', data });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });

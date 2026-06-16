@@ -415,16 +415,20 @@ class ApiClient {
     return this.request('/reports/appointments/today');
   }
 
-  async downloadReport(type: string, params?: Record<string, string>): Promise<Blob> {
+  async downloadReport(
+    type: string,
+    params?: Record<string, string>,
+  ): Promise<{ blob: Blob; filename: string }> {
     const endpointMap: Record<string, string> = {
-      pacientes: '/reports/patients',
-      citas: '/reports/appointments',
-      ingresos: '/reports/income',
+      pacientes:  '/reports/patients',
+      citas:      '/reports/appointments',
+      ingresos:   '/reports/income',
       asistencia: '/reports/attendance',
-      horas: '/reports/hours',
-      financiero: '/reports/income',
+      horas:      '/reports/hours',
+      financiero: '/reports/financial',
     };
     const endpoint = endpointMap[type] ?? `/reports/${type}`;
+    const format = params?.format ?? 'pdf';
     const queryString =
       params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params)}` : '';
     const url = `${this.baseURL}${endpoint}${queryString}`;
@@ -432,8 +436,15 @@ class ApiClient {
     const res = await fetch(url, {
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
-    if (!res.ok) throw new Error(`Error ${res.status} al generar el reporte`);
-    return res.blob();
+    if (!res.ok) {
+      let msg = `Error ${res.status} al generar el reporte`;
+      try { const j = await res.json(); msg = j.message ?? msg; } catch (_) {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const ext = format === 'csv' ? 'csv' : 'pdf';
+    const filename = `reporte_${type}_${new Date().toISOString().split('T')[0]}.${ext}`;
+    return { blob, filename };
   }
 
   private normalizeChatMessage(m: any) {

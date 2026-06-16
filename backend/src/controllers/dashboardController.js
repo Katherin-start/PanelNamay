@@ -370,19 +370,19 @@ const getDashboardMetrics = async (req, res) => {
         pagosEfectuadosRes
       ] = await Promise.all([
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero')
-          .eq('fecha_pago', today)
+          .select('id, fecha, monto, estado, id_paciente, paciente_id, descripcion, metodo, metodo_pago, referencia, factura_numero, boleta_numero')
+          .eq('fecha', today)
           .in('estado', ['pagado', 'completado'])
-          .order('fecha_pago', { ascending: true }),
+          .order('fecha', { ascending: true }),
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia, factura_numero, boleta_numero')
+          .select('id, fecha, monto, estado, id_paciente, paciente_id, descripcion, metodo, metodo_pago, referencia, factura_numero, boleta_numero')
           .in('estado', ['pagado', 'completado'])
-          .order('fecha_pago', { ascending: false })
+          .order('fecha', { ascending: false })
           .limit(50),
         supabase.from('pagos')
-          .select('id, fecha_pago, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia')
+          .select('id, fecha, monto, estado, id_paciente, paciente_id, descripcion, metodo, referencia')
           .in('estado', ['pendiente', 'por_pagar', 'no_pagado', 'pendiente_pago'])
-          .order('fecha_pago', { ascending: true })
+          .order('fecha', { ascending: true })
           .limit(50),
         supabase.from('tratamientos')
           .select('id, paciente_id, nombre, estado, costo_total, saldo, abono, fecha_inicio, fecha_fin, usuarios:paciente_id(nombre, estado)')
@@ -485,11 +485,14 @@ const getDashboardMetrics = async (req, res) => {
     try {
       const { data: ingresosPorMesData } = await supabase
         .from('pagos')
-        .select('fecha_pago, monto')
-        .gte('fecha_pago', sixMonthsAgo.toISOString().split('T')[0]);
+        .select('fecha, fecha_pago, monto')
+        .gte('fecha', sixMonthsAgo.toISOString().split('T')[0])
+        .in('estado', ['pagado', 'completado']);
 
       ingresosPorMesData?.forEach(pago => {
-        const mes = pago.fecha_pago.substring(0, 7);
+        const fechaRef = pago.fecha || pago.fecha_pago;
+        if (!fechaRef) return;
+        const mes = fechaRef.substring(0, 7);
         ingresosMensuales[mes] = (ingresosMensuales[mes] || 0) + parseFloat(pago.monto || 0);
       });
     } catch (e) {
@@ -556,6 +559,22 @@ const getDashboardMetrics = async (req, res) => {
       console.log('Error en conteo de pacientes por usuario/rol:', e.message);
     }
 
+    let citasPorMes = {};
+    try {
+      const { data: citasMensualesData } = await supabase
+        .from('citas')
+        .select('fecha')
+        .gte('fecha', sixMonthsAgo.toISOString().split('T')[0]);
+
+      citasMensualesData?.forEach(cita => {
+        if (!cita.fecha) return;
+        const mes = cita.fecha.substring(0, 7);
+        citasPorMes[mes] = (citasPorMes[mes] || 0) + 1;
+      });
+    } catch (e) {
+      console.log('Error en citas por mes:', e.message);
+    }
+
     let citasHoy = [];
     try {
       const { data: citas } = await supabase
@@ -569,19 +588,45 @@ const getDashboardMetrics = async (req, res) => {
       console.log('Error en citas hoy:', e.message);
     }
 
+    let citasPendientesCount = 0;
+    let citasCompletadasCount = 0;
+    try {
+      const mesActual = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      // Cuenta TODAS las citas pendientes/sin confirmar (sin restricción de fecha)
+      const [pendientesRes, completadasRes] = await Promise.all([
+        supabase.from('citas').select('id', { count: 'exact', head: true })
+          .in('estado', ['programada', 'confirmada', 'pendiente']),
+        supabase.from('citas').select('id', { count: 'exact', head: true })
+          .gte('fecha', mesActual).in('estado', ['completada', 'atendida'])
+      ]);
+      citasPendientesCount = pendientesRes.count || 0;
+      citasCompletadasCount = completadasRes.count || 0;
+    } catch (e) {
+      console.log('Error en conteo de citas admin:', e.message);
+    }
+
+    const mesActualKey = new Date().toISOString().substring(0, 7);
+    const ingresosTotalesMes = ingresosMensuales[mesActualKey] || 0;
+
     res.json({
       code: 'DASHBOARD_SUCCESS',
       data: {
         pacientesPorDia,
         ingresosPorMes: ingresosMensuales,
+        citasPorMes,
         rendimientoOdontologo,
         estadoClinica,
         citasHoy,
         totalPacientes: totalPacientesCount,
+        citasPendientes: citasPendientesCount,
+        citasCompletadas: citasCompletadasCount,
+        ingresosTotales: ingresosTotalesMes,
         resumen: {
           totalPacientes: totalPacientesCount,
           citasHoy: citasHoy.length,
-          ingresosMesActual: ingresosMensuales[new Date().toISOString().substring(0, 7)] || 0
+          citasPendientes: citasPendientesCount,
+          citasCompletadas: citasCompletadasCount,
+          ingresosMesActual: ingresosTotalesMes
         }
       }
     });

@@ -23,6 +23,8 @@ import {
   EnvelopeIcon,
   KeyIcon,
   DocumentTextIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
@@ -32,8 +34,8 @@ import { getInitials } from '@/lib/utils';
 const allNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE'] },
   { name: 'Pacientes', href: '/pacientes', icon: UsersIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA'] },
-  { name: 'Citas', href: '/citas', icon: CalendarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA'] },
-  { name: 'Pagos', href: '/pagos', icon: CreditCardIcon, roles: ['ADMINISTRADOR', 'CAJERO'] },
+  { name: 'Citas', href: '/citas', icon: CalendarIcon, roles: ['ODONTOLOGO', 'RECEPCIONISTA'] },
+  { name: 'Pagos', href: '/pagos', icon: CreditCardIcon, roles: ['CAJERO'] },
   { name: 'Comprobantes', href: '/comprobantes', icon: DocumentTextIcon, roles: ['CAJERO', 'RECEPCIONISTA'] },
   { name: 'Descuentos', href: '/descuentos', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   { name: 'Reportes', href: '/reportes', icon: DocumentChartBarIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'CAJERO', 'RECEPCIONISTA', 'PRACTICANTE'] },
@@ -48,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -55,6 +58,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, setUser, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Carga tema inicial desde localStorage y aplica clase al documento
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark = saved ? saved === 'dark' : prefersDark;
+    setIsDark(dark);
+    document.documentElement.classList.toggle('dark', dark);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     if (isLoading) return;
@@ -180,7 +199,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900">
         <div className="flex flex-col items-center gap-5 animate-fade-in">
           <div className="w-12 h-12 rounded-hair flex items-center justify-center bg-namay-navy">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -201,7 +220,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initials = getInitials(user.nombre ?? '?');
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-white dark:bg-gray-900 transition-colors duration-200">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 lg:hidden bg-namay-navy/40 animate-fade-in"
@@ -293,21 +312,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 lg:px-8 py-3.5 flex items-center gap-3">
+        <header className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 lg:px-8 py-3.5 flex items-center gap-3 transition-colors duration-200">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-namay-navy"
+            className="lg:hidden p-1.5 text-namay-navy dark:text-gray-300"
           >
             <Bars3Icon className="h-5 w-5" />
           </button>
           <div className="lg:hidden flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logonamay.png" alt="Dental Namay" className="h-8 w-auto object-contain" />
+            <img src="/logonamay.png" alt="Dental Namay" className="h-8 w-auto object-contain dark:brightness-0 dark:invert" />
           </div>
 
           <div className="flex-1 max-w-sm hidden sm:block">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 dark:text-gray-600" />
               <input
                 type="text"
                 placeholder="Buscar..."
@@ -317,10 +336,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
+            {/* Toggle dark/light mode */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              className="p-2 text-namay-navy/60 dark:text-gray-400 hover:text-namay-navy dark:hover:text-white transition-colors"
+            >
+              {isDark ? (
+                <SunIcon className="h-[18px] w-[18px]" />
+              ) : (
+                <MoonIcon className="h-[18px] w-[18px]" />
+              )}
+            </button>
+
             <div ref={notifRef} className="relative">
               <button
                 onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }}
-                className="relative p-2 text-namay-navy/70 hover:text-namay-navy transition-colors"
+                className="relative p-2 text-namay-navy/70 dark:text-gray-400 hover:text-namay-navy dark:hover:text-white transition-colors"
               >
                 <BellIcon className="h-[18px] w-[18px]" />
                 {unreadNotifs > 0 && (
@@ -330,9 +362,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-11 w-80 bg-white border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                  <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/70">Notificaciones</p>
+                <div className="absolute right-0 top-11 w-80 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
+                  <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-namay-steel/70 dark:text-gray-400">Notificaciones</p>
                     {unreadNotifs > 0 && (
                       <span className="badge-base bg-danger-100 text-danger-700">
                         {unreadNotifs} nuevas
@@ -341,16 +373,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="py-10 text-center text-[11px] uppercase tracking-[0.2em] text-gray-300">Sin notificaciones</div>
+                      <div className="py-10 text-center text-[11px] uppercase tracking-[0.2em] text-gray-300 dark:text-gray-600">Sin notificaciones</div>
                     ) : (
                       notifications.slice(0, 8).map((n, i) => (
                         <div
                           key={n.id ?? i}
-                          className={`px-5 py-3.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${!n.read ? 'bg-info-50/30' : ''}`}
+                          className={`px-5 py-3.5 border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors ${!n.read ? 'bg-info-50/30 dark:bg-blue-900/20' : ''}`}
                         >
-                          <p className="text-sm font-medium text-namay-navy">{n.title ?? n.titulo}</p>
-                          <p className="text-xs text-namay-steel/70 mt-1 leading-relaxed">{n.message ?? n.descripcion}</p>
-                          <p className="text-[10px] text-gray-300 mt-1.5 tabular">
+                          <p className="text-sm font-medium text-namay-navy dark:text-gray-100">{n.title ?? n.titulo}</p>
+                          <p className="text-xs text-namay-steel/70 dark:text-gray-400 mt-1 leading-relaxed">{n.message ?? n.descripcion}</p>
+                          <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1.5 tabular">
                             {n.fecha ? new Date(n.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
@@ -364,7 +396,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-                className="flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-100 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-100 dark:border-gray-700 hover:opacity-80 transition-opacity"
               >
                 {user.foto_perfil ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -379,16 +411,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 )}
                 <div className="hidden sm:block text-left">
-                  <p className="text-xs font-medium leading-tight text-namay-navy">
+                  <p className="text-xs font-medium leading-tight text-namay-navy dark:text-gray-200">
                     {user.nombre?.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] leading-tight text-namay-steel/60">{roleCfg.label}</p>
+                  <p className="text-[10px] leading-tight text-namay-steel/60 dark:text-gray-500">{roleCfg.label}</p>
                 </div>
               </button>
 
               {showProfile && (
-                <div className="absolute right-0 top-11 w-72 bg-white border border-gray-100 z-50 overflow-hidden animate-fade-in">
-                  <div className="px-5 py-5 border-b border-gray-100">
+                <div className="absolute right-0 top-11 w-72 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
+                  <div className="px-5 py-5 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
                         {user.foto_perfil ? (
@@ -406,7 +438,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploadingPhoto}
-                          className="absolute bottom-0 right-0 p-1 bg-white border border-gray-100 hover:border-namay-coral disabled:opacity-50 transition-colors"
+                          className="absolute bottom-0 right-0 p-1 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 hover:border-namay-coral disabled:opacity-50 transition-colors"
                           title="Cambiar foto de perfil"
                         >
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" style={{ color: '#1D3557' }}>
@@ -415,8 +447,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </button>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-namay-navy font-medium text-sm truncate">{user.nombre}</p>
-                        <p className="text-[11px] text-namay-steel/70 truncate mt-0.5">{user.email}</p>
+                        <p className="text-namay-navy dark:text-gray-100 font-medium text-sm truncate">{user.nombre}</p>
+                        <p className="text-[11px] text-namay-steel/70 dark:text-gray-400 truncate mt-0.5">{user.email}</p>
                         <span
                           className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-[0.2em]"
                           style={{ backgroundColor: roleCfg.bg, color: roleCfg.text }}
@@ -427,30 +459,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     </div>
                   </div>
-                  <div className="px-5 py-3 space-y-2.5 border-b border-gray-100">
-                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                  <div className="px-5 py-3 space-y-2.5 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70 dark:text-gray-400">
                       <UserCircleIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{user.nombre}</span>
                     </div>
-                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                    <div className="flex items-center gap-2.5 text-xs text-namay-steel/70 dark:text-gray-400">
                       <EnvelopeIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">{user.email}</span>
                     </div>
                     {user.id && (
-                      <div className="flex items-center gap-2.5 text-xs text-namay-steel/70">
+                      <div className="flex items-center gap-2.5 text-xs text-namay-steel/70 dark:text-gray-400">
                         <ShieldCheckIcon className="h-3.5 w-3.5 flex-shrink-0" />
                         <span className="tabular">ID: {user.id}</span>
                       </div>
                     )}
                   </div>
                   <div className="p-2 space-y-0.5">
-                    <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-navy hover:bg-gray-50 transition-colors">
-                      <KeyIcon className="h-3.5 w-3.5 text-namay-steel/60" />
+                    <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <KeyIcon className="h-3.5 w-3.5 text-namay-steel/60 dark:text-gray-500" />
                       <span className="font-light">Cambiar contraseña</span>
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-coral hover:bg-danger-50 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-namay-coral hover:bg-danger-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       <ArrowRightOnRectangleIcon className="h-3.5 w-3.5" />
                       <span className="font-light">Cerrar sesión</span>

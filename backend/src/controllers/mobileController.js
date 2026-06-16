@@ -1363,6 +1363,83 @@ const testNotification = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// CHAT CONTACTS — devuelve los contactos que el paciente puede ver
+// Doctor asignado (de sus citas) + todo el personal (admin, cajero, recepcionista)
+// ─────────────────────────────────────────────────────────────────
+const getMobileChatContacts = async (req, res) => {
+  try {
+    const pacienteId = req.user.id;
+
+    // Obtener roles relevantes
+    const { data: roles } = await supabase
+      .from('roles')
+      .select('id, nombre')
+      .in('nombre', ['ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO', 'ODONTOLOGO']);
+
+    const roleMap = {};
+    (roles || []).forEach(r => { roleMap[r.nombre.toUpperCase()] = r.id; });
+
+    // 1. Doctor asignado: el odontólogo de la cita más reciente del paciente
+    let assignedDoctorId = null;
+    const { data: lastCita } = await supabase
+      .from('citas')
+      .select('id_odontologo')
+      .eq('id_paciente_uuid', pacienteId)
+      .not('id_odontologo', 'is', null)
+      .order('fecha', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastCita?.id_odontologo) assignedDoctorId = lastCita.id_odontologo;
+
+    // 2. Traer usuarios por roles
+    const rolesToFetch = ['ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO'];
+    const roleIds = rolesToFetch.map(r => roleMap[r]).filter(Boolean);
+
+    const { data: staffUsers, error: staffError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, apellido, foto_perfil, rol_id, online, last_seen, roles:rol_id(nombre)')
+      .in('rol_id', roleIds)
+      .eq('activo', true);
+
+    if (staffError) {
+      console.error('[getMobileChatContacts] Error al obtener staff:', staffError.message);
+    }
+
+    // 3. Si hay doctor asignado, traerlo también (solo ese, no todos los odontólogos)
+    let doctorUser = null;
+    if (assignedDoctorId) {
+      const { data: doc, error: doctorError } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido, foto_perfil, rol_id, online, last_seen, roles:rol_id(nombre)')
+        .eq('id', assignedDoctorId)
+        .maybeSingle();
+      if (doctorError) {
+        console.error('[getMobileChatContacts] Error al obtener doctor asignado:', doctorError.message);
+      }
+      if (doc) doctorUser = doc;
+    }
+
+    // Combinar y deduplicar por id
+    const all = [...(staffUsers || [])];
+    if (doctorUser && !all.find(u => u.id === doctorUser.id)) all.unshift(doctorUser);
+
+    const contacts = all.map(u => ({
+      id: u.id,
+      nombre: [u.nombre, u.apellido].filter(Boolean).join(' '),
+      foto_perfil: u.foto_perfil ?? null,
+      rol: u.roles?.nombre ?? 'STAFF',
+      online: u.online ?? false,
+      last_seen: u.last_seen ?? null,
+      is_assigned_doctor: u.id === assignedDoctorId,
+    }));
+
+    res.json({ code: 'CHAT_CONTACTS_SUCCESS', contacts });
+  } catch (err) {
+    res.status(500).json({ message: 'Error al obtener contactos', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 module.exports = {
   mobileRegister,
   mobileLogin,
@@ -1381,6 +1458,7 @@ module.exports = {
   getMyMobileAppointments,
   getMyPatientAppointments,
   confirmMobileAppointment,
+  getMobileChatContacts,
   diagnosticRoles,
   testNotification,
 };

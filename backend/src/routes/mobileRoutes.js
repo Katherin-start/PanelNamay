@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts, getMobileDoctorById, createReview, getMyReviews, createMobileAppointment, getMobileAppointmentPayment, uploadMobilePaymentProof, getMyClinicalHistory, getMyMobileAppointments, getMyPatientAppointments, confirmMobileAppointment, diagnosticRoles, testNotification } = require('../controllers/mobileController');
+const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts, getMobileDoctorById, createReview, getMyReviews, createMobileAppointment, getMobileAppointmentPayment, uploadMobilePaymentProof, getMyClinicalHistory, getMyMobileAppointments, getMyPatientAppointments, confirmMobileAppointment, getMobileChatContacts, diagnosticRoles, testNotification } = require('../controllers/mobileController');
 const { getServices } = require('../controllers/serviceController');
 const mobileAuthMiddleware = require('../middleware/mobileAuthMiddleware');
 
@@ -31,6 +31,7 @@ router.put('/appointments/:appointmentId/confirm', mobileAuthMiddleware, confirm
 router.get('/appointments/:appointmentId/payment', mobileAuthMiddleware, getMobileAppointmentPayment); // Obtener pago de cita y QR
 router.post('/payments/:paymentId/proof', mobileAuthMiddleware, upload.single('comprobante'), uploadMobilePaymentProof); // Subir comprobante de pago
 router.get('/clinical-history', mobileAuthMiddleware, getMyClinicalHistory); // Obtener historial clínico del paciente
+router.get('/chat/contacts', mobileAuthMiddleware, getMobileChatContacts);   // Contactos de chat disponibles para el paciente
 router.get('/services', mobileAuthMiddleware, getServices); // Listar precios de consultas definidos por administración
 router.get('/discounts', mobileAuthMiddleware, getMobileDiscounts);    // Listar descuentos autorizados y vigentes
 

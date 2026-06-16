@@ -34,6 +34,12 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* ── Dark mode base ─────────────────────────────── */
+  .dark body {
+    background-color: #111827;
+    color: #F9FAFB;
+  }
 }
 
 @layer components {
@@ -149,5 +155,55 @@
   /* ── Hairline divider (línea 1px sutil) ──────── */
   .hairline {
     @apply border-t border-gray-100;
+  }
+
+  /* ── Dark mode overrides para clases de componentes ── */
+  .dark .card-base,
+  .dark .card-flat {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .dark .card-stat {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .dark .table-header {
+    @apply border-gray-700 text-gray-400;
+  }
+
+  .dark .table-cell {
+    @apply border-gray-700 text-gray-200;
+  }
+
+  .dark .label-base {
+    @apply text-gray-400;
+  }
+
+  .dark .input-base {
+    @apply bg-gray-800 border-gray-600 text-gray-100 placeholder:text-gray-500;
+  }
+
+  .dark .input-underline {
+    @apply bg-transparent border-gray-600 text-gray-100 placeholder:text-gray-500;
+  }
+
+  .dark .input-search {
+    @apply text-gray-100 border-gray-700 placeholder:text-gray-600;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-gray-800 border-gray-600 text-gray-200;
+  }
+
+  .dark .btn-ghost {
+    @apply hover:bg-gray-700 text-gray-300;
+  }
+
+  .dark .btn-steel {
+    @apply bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700;
+  }
+
+  .dark .hairline {
+    @apply border-gray-700;
   }
 }
