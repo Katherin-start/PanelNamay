@@ -444,16 +444,35 @@ const listPayments = async (req, res) => {
 
     if (error) {
       console.error('[listPayments] Error en Supabase:', error);
-      return res.status(500).json({ 
-        message: 'Error al obtener pagos', 
-        error: error.message, 
+      return res.status(500).json({
+        message: 'Error al obtener pagos',
+        error: error.message,
         code: 'PAYMENT_LIST_ERROR',
         details: error.details || null
       });
     }
 
-    console.log('[listPayments] Consulta exitosa. Pagos encontrados:', data?.length || 0);
-    res.json({ code: 'PAYMENTS_LIST_SUCCESS', data: data || [] });
+    // Enriquecer con nombre del paciente desde la tabla usuarios
+    const payments = data || [];
+    const uuids = [...new Set(payments.map(p => p.id_paciente_uuid).filter(Boolean))];
+    let userMap = {};
+    if (uuids.length > 0) {
+      const { data: users } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', uuids);
+      (users || []).forEach(u => {
+        userMap[u.id] = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+      });
+    }
+
+    const enriched = payments.map(p => ({
+      ...p,
+      paciente_nombre: p.paciente_nombre || userMap[p.id_paciente_uuid] || null,
+    }));
+
+    console.log('[listPayments] Consulta exitosa. Pagos encontrados:', enriched.length);
+    res.json({ code: 'PAYMENTS_LIST_SUCCESS', data: enriched });
   } catch (err) {
     console.error('[listPayments] Error inesperado:', err);
     res.status(500).json({ 
