@@ -491,14 +491,14 @@ export default function ChatPage() {
       />
 
       <div
-        className="bg-white border border-gray-100 overflow-hidden flex"
+        className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden flex"
         style={{ height: 'calc(100vh - 240px)', minHeight: '500px' }}
       >
         {/* Contacts sidebar */}
-        <div className="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
-          <div className="px-5 py-4 border-b border-gray-100">
+        <div className="w-72 flex-shrink-0 border-r border-gray-100 dark:border-gray-700 flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+              <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 dark:text-gray-600" />
               <input
                 type="text"
                 value={searchContact}
@@ -510,7 +510,7 @@ export default function ChatPage() {
           </div>
           <div className="flex-1 overflow-y-auto">
             {contacts.length === 0 ? (
-              <div className="p-4 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-300">Sin contactos</div>
+              <div className="p-4 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-300 dark:text-gray-600">Sin contactos</div>
             ) : (
               contacts
                 .filter((contact) =>
@@ -525,7 +525,7 @@ export default function ChatPage() {
                     className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors border-l-2 ${
                       selectedContact?.id === contact.id
                         ? 'border-namay-coral bg-namay-coral/[0.04]'
-                        : 'border-transparent hover:bg-gray-50/50'
+                        : 'border-transparent hover:bg-gray-50/50 dark:hover:bg-gray-700/40'
                     }`}
                   >
                     {contact.foto_perfil ? (
@@ -541,10 +541,10 @@ export default function ChatPage() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-namay-navy truncate">
+                      <p className="text-sm font-semibold text-namay-navy dark:text-gray-100 truncate">
                         {contact.nombre}
                       </p>
-                      <p className="text-[11px] text-namay-steel/70 font-medium truncate">{contact.rol}</p>
+                      <p className="text-[11px] text-namay-steel/70 dark:text-gray-400 font-medium truncate">{contact.rol}</p>
                     </div>
                     {contact.mensajes_no_leidos > 0 && (
                       <span className="badge-base bg-namay-coral text-white min-w-[20px] h-5 justify-center text-[10px]">
@@ -562,7 +562,7 @@ export default function ChatPage() {
           {selectedContact ? (
             <>
               {/* Chat header */}
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
                 <div className="flex items-center gap-3">
                   {selectedContact.foto_perfil ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -577,7 +577,7 @@ export default function ChatPage() {
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-namay-navy">
+                    <p className="text-sm font-semibold text-namay-navy dark:text-gray-100">
                       {selectedContact.nombre}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -585,10 +585,10 @@ export default function ChatPage() {
                         className={`w-1.5 h-1.5 rounded-full ${
                           selectedContact.online
                             ? 'bg-success-500 animate-pulse'
-                            : 'bg-gray-300'
+                            : 'bg-gray-300 dark:bg-gray-600'
                         }`}
                       />
-                      <p className="text-[11px] text-namay-steel/70 font-medium">
+                      <p className="text-[11px] text-namay-steel/70 dark:text-gray-400 font-medium">
                         {selectedContact.online
                           ? 'En línea'
                           : selectedContact.last_seen
@@ -598,7 +598,7 @@ export default function ChatPage() {
                       </p>
                       {contactTyping && selectedContact.online && (
                         <>
-                          <span className="text-gray-300">·</span>
+                          <span className="text-gray-300 dark:text-gray-600">·</span>
                           <p className="text-[11px] text-namay-coral font-semibold uppercase tracking-[0.15em] animate-pulse">
                             Escribiendo
                           </p>
@@ -608,18 +608,18 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden md:inline text-[11px] text-namay-steel/70 font-medium">{selectedContact.correo}</span>
+                  <span className="hidden md:inline text-[11px] text-namay-steel/70 dark:text-gray-400 font-medium">{selectedContact.correo}</span>
                   <button
                     onClick={() => startCall(selectedContact.id, selectedContact.nombre)}
                     disabled={callStatus !== 'idle'}
-                    className="p-2 hover:bg-gray-50 text-namay-steel/50 hover:text-success-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-namay-steel/50 dark:text-gray-400 hover:text-success-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     title="Llamar"
                   >
                     <PhoneIcon className="h-4 w-4" />
                   </button>
                   <button
                     onClick={handleClearChat}
-                    className="p-2 hover:bg-gray-50 text-namay-steel/50 hover:text-danger-500 transition-colors"
+                    className="p-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-namay-steel/50 dark:text-gray-400 hover:text-danger-500 transition-colors"
                     title="Vaciar chat"
                   >
                     <TrashIcon className="h-4 w-4" />
@@ -628,10 +628,10 @@ export default function ChatPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-6 py-5 bg-namay-cream/30">
+              <div className="flex-1 overflow-y-auto px-6 py-5 bg-namay-cream/30 dark:bg-gray-900/30">
                 {messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-namay-steel/40 gap-3">
-                    <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-300" strokeWidth={1.5} />
+                  <div className="h-full flex flex-col items-center justify-center text-namay-steel/40 dark:text-gray-500 gap-3">
+                    <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
                     <p className="text-sm font-medium">No hay mensajes. ¡Inicia la conversación!</p>
                   </div>
                 ) : (
@@ -642,7 +642,7 @@ export default function ChatPage() {
                         <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-fade-in`}>
                           <div className="max-w-xs lg:max-w-md">
                             {!isMine && (
-                              <p className="text-[10px] text-namay-steel/60 font-semibold mb-1 ml-1 uppercase tracking-[0.15em]">
+                              <p className="text-[10px] text-namay-steel/60 dark:text-gray-400 font-semibold mb-1 ml-1 uppercase tracking-[0.15em]">
                                 {message.remitente_nombre}
                               </p>
                             )}
@@ -651,7 +651,7 @@ export default function ChatPage() {
                                 className={`px-4 py-2.5 text-sm leading-relaxed ${
                                   isMine
                                     ? 'bg-namay-navy text-white'
-                                    : 'bg-white text-namay-navy border border-gray-100'
+                                    : 'bg-white dark:bg-gray-700 text-namay-navy dark:text-gray-100 border border-gray-100 dark:border-gray-600'
                                 }`}
                                 style={{
                                   borderRadius: isMine ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
@@ -669,7 +669,7 @@ export default function ChatPage() {
                                     target="_blank"
                                     rel="noreferrer"
                                     className={`inline-flex items-center gap-2 text-sm underline ${
-                                      isMine ? 'text-white' : 'text-namay-navy'
+                                      isMine ? 'text-white' : 'text-namay-navy dark:text-gray-100'
                                     }`}
                                   >
                                     <PaperClipIcon className="h-4 w-4" />
@@ -680,7 +680,7 @@ export default function ChatPage() {
                                 )}
 
                                 {message.caption && message.tipo !== 'texto' ? (
-                                  <p className={`text-[11px] mt-2 font-medium ${isMine ? 'text-white/70' : 'text-namay-steel/60'}`}>
+                                  <p className={`text-[11px] mt-2 font-medium ${isMine ? 'text-white/70' : 'text-namay-steel/60 dark:text-gray-400'}`}>
                                     {message.caption}
                                   </p>
                                 ) : null}
@@ -691,16 +691,16 @@ export default function ChatPage() {
                                 className={`absolute ${isMine ? '-left-8' : '-right-8'} top-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity`}
                                 title="Opciones del mensaje"
                               >
-                                <EllipsisVerticalIcon className="h-4 w-4 text-namay-steel/40 hover:text-namay-navy" />
+                                <EllipsisVerticalIcon className="h-4 w-4 text-namay-steel/40 dark:text-gray-500 hover:text-namay-navy dark:hover:text-gray-200" />
                               </button>
 
                               {menuOpenMessageId === message.id && (
                                 <div
-                                  className={`absolute ${isMine ? 'right-0' : 'left-0'} top-full mt-2 bg-white border border-gray-100 z-50 min-w-max overflow-hidden animate-scale-in`}
+                                  className={`absolute ${isMine ? 'right-0' : 'left-0'} top-full mt-2 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 z-50 min-w-max overflow-hidden animate-scale-in`}
                                 >
                                   <button
                                     onClick={() => handleDeleteMessage(message.id)}
-                                    className="w-full text-left px-4 py-2.5 text-xs font-medium text-danger-500 hover:bg-danger-50 flex items-center gap-2"
+                                    className="w-full text-left px-4 py-2.5 text-xs font-medium text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-500/10 flex items-center gap-2"
                                   >
                                     <TrashIcon className="h-3.5 w-3.5" />
                                     Eliminar mensaje
@@ -711,7 +711,7 @@ export default function ChatPage() {
 
                             <div className={`mt-1 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
                               <div className={`flex items-center gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-                                <p className="text-[10px] text-namay-steel/50 font-medium tabular">
+                                <p className="text-[10px] text-namay-steel/50 dark:text-gray-500 font-medium tabular">
                                   {getMessageTime(message.fecha_envio)}
                                 </p>
                                 {isMine && (
@@ -721,7 +721,7 @@ export default function ChatPage() {
                                       <CheckIcon className="h-3 w-3 text-info-500 -ml-1.5" />
                                     </div>
                                   ) : (
-                                    <CheckIcon className="h-3 w-3 text-gray-300" />
+                                    <CheckIcon className="h-3 w-3 text-gray-300 dark:text-gray-600" />
                                   )
                                 )}
                               </div>
@@ -738,32 +738,32 @@ export default function ChatPage() {
               {/* Input */}
               <form
                 onSubmit={handleSendMessage}
-                className="px-6 py-4 border-t border-gray-100 space-y-3 bg-white"
+                className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 space-y-3 bg-white dark:bg-gray-800"
               >
                 {selectedFile && (
-                  <div className="flex items-center gap-3 p-3 border-l-2 border-info-500 bg-info-50 animate-fade-in">
-                    <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-info-600 border border-info-100">
+                  <div className="flex items-center gap-3 p-3 border-l-2 border-info-500 bg-info-50 dark:bg-info-500/10 animate-fade-in">
+                    <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-info-600 border border-info-100 dark:border-info-500/30">
                       <PaperClipIcon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-namay-navy truncate">
+                      <p className="text-sm font-medium text-namay-navy dark:text-gray-100 truncate">
                         {selectedFile.name}
                       </p>
-                      <p className="text-[11px] text-namay-steel/60 font-medium tabular">
+                      <p className="text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium tabular">
                         {(selectedFile.size / 1024).toFixed(2)} KB
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedFile(null)}
-                      className="text-namay-steel/50 hover:text-danger-500 font-semibold text-sm transition-colors"
+                      className="text-namay-steel/50 dark:text-gray-400 hover:text-danger-500 font-semibold text-sm transition-colors"
                     >
                       ✕
                     </button>
                   </div>
                 )}
                 <div className="flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-namay-steel/70 border-b border-transparent hover:text-namay-coral hover:border-namay-coral transition-colors cursor-pointer">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-namay-steel/70 dark:text-gray-400 border-b border-transparent hover:text-namay-coral hover:border-namay-coral transition-colors cursor-pointer">
                     <PaperClipIcon className="h-3.5 w-3.5" />
                     Adjuntar
                     <input
@@ -809,8 +809,8 @@ export default function ChatPage() {
               </form>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-namay-steel/50 gap-3">
-              <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-300" strokeWidth={1.5} />
+            <div className="flex-1 flex flex-col items-center justify-center text-namay-steel/50 dark:text-gray-500 gap-3">
+              <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
               <p className="text-sm font-medium">Selecciona un contacto para comenzar</p>
             </div>
           )}

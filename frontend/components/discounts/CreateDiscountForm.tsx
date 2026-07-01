@@ -115,7 +115,7 @@ export default function CreateDiscountForm({ className, onSuccess }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="label-base">Tipo <span className="text-namay-coral">*</span></label>
-            <select name="tipo" value={form.tipo} onChange={handleChange} className="input-underline bg-white">
+            <select name="tipo" value={form.tipo} onChange={handleChange} className="input-underline bg-white dark:bg-gray-800">
               <option value="porcentaje">Porcentaje (%)</option>
               <option value="monto">Monto fijo (S/.)</option>
             </select>
@@ -179,8 +179,8 @@ export default function CreateDiscountForm({ className, onSuccess }: Props) {
             placeholder="TODOS, CAJERO, ODONTOLOGO..."
             className="input-underline uppercase tracking-wide"
           />
-          <p className="text-[11px] text-namay-steel/60 font-medium mt-2">
-            Escribe <code className="px-1.5 py-0.5 bg-namay-cream text-namay-navy font-mono text-[10px]">TODOS</code> o lista roles separados por coma (EJ: CAJERO, RECEPCIONISTA)
+          <p className="text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium mt-2">
+            Escribe <code className="px-1.5 py-0.5 bg-namay-cream dark:bg-gray-700 text-namay-navy dark:text-gray-200 font-mono text-[10px]">TODOS</code> o lista roles separados por coma (EJ: CAJERO, RECEPCIONISTA)
           </p>
         </div>
 

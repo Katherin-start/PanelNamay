@@ -148,52 +148,52 @@ export default function PatientsPage() {
       />
 
       {/* Stats cards — hairline grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-100">
-        <div className="bg-white p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-100 dark:bg-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Activos este mes</p>
-          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">
+          <p className="mt-3 text-3xl font-medium text-namay-navy dark:text-gray-100 tabular">
             {patients.filter((p) => p.estado === 'activo').length}
           </p>
-          <p className="text-xs mt-1.5 text-namay-steel/60 font-medium">+12.5% del mes pasado</p>
+          <p className="text-xs mt-1.5 text-namay-steel/60 dark:text-gray-400 font-medium">+12.5% del mes pasado</p>
         </div>
-        <div className="bg-white p-6">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Próximas citas</p>
-          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">24</p>
+          <p className="mt-3 text-3xl font-medium text-namay-navy dark:text-gray-100 tabular">24</p>
           <div className="flex gap-1 mt-3">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="w-6 h-6 rounded-full border-2 border-white bg-namay-steel"
+                className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800 bg-namay-steel"
                 style={{ opacity: 0.6 + i * 0.1 }}
               />
             ))}
-            <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-semibold bg-namay-cream text-namay-steel">
+            <div className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-[10px] font-semibold bg-namay-cream dark:bg-gray-700 text-namay-steel dark:text-gray-300">
               +21
             </div>
           </div>
         </div>
-        <div className="bg-white p-6">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Nuevos registros</p>
           <p className="mt-3 text-3xl font-medium text-namay-coral tabular">
             {String(newThisMonth).padStart(2, '0')}
           </p>
           <div className="mt-3">
-            <div className="h-1 rounded-full bg-namay-cream overflow-hidden">
+            <div className="h-1 rounded-full bg-namay-cream dark:bg-gray-700 overflow-hidden">
               <div
                 className="h-full rounded-full bg-namay-coral transition-all duration-500"
                 style={{ width: `${Math.min((newThisMonth / 12) * 100, 100)}%` }}
               />
             </div>
-            <p className="text-[11px] mt-1.5 text-namay-steel/60 font-medium">Meta diaria: 12</p>
+            <p className="text-[11px] mt-1.5 text-namay-steel/60 dark:text-gray-400 font-medium">Meta diaria: 12</p>
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+            <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 dark:text-gray-600" />
             <input
               type="text"
               placeholder="Buscar paciente..."
@@ -202,7 +202,7 @@ export default function PatientsPage() {
               className="input-search"
             />
           </div>
-          <button className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-namay-steel/70 border-b border-transparent hover:text-namay-coral hover:border-namay-coral transition-colors">
+          <button className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-namay-steel/70 dark:text-gray-400 border-b border-transparent hover:text-namay-coral hover:border-namay-coral transition-colors">
             <FunnelIcon className="h-3.5 w-3.5" />
             Filtrar
           </button>
@@ -222,13 +222,13 @@ export default function PatientsPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-14 text-sm text-namay-steel/40 font-medium">
+                  <td colSpan={5} className="text-center py-14 text-sm text-namay-steel/40 dark:text-gray-500 font-medium">
                     No se encontraron pacientes
                   </td>
                 </tr>
               ) : (
                 filtered.map((patient) => (
-                  <tr key={patient.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={patient.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
                         {patient.foto_perfil ? (
@@ -244,20 +244,20 @@ export default function PatientsPage() {
                           </div>
                         )}
                         <div>
-                          <p className="text-sm font-semibold text-namay-navy">{patient.nombre}</p>
-                          <p className="text-[11px] text-namay-steel/60 font-medium">DNI: {patient.dni || 'No registrado'}</p>
+                          <p className="text-sm font-semibold text-namay-navy dark:text-gray-100">{patient.nombre}</p>
+                          <p className="text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium">DNI: {patient.dni || 'No registrado'}</p>
                         </div>
                       </div>
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-1.5 text-sm text-namay-steel font-medium">
-                        <EnvelopeIcon className="h-3.5 w-3.5 text-namay-steel/40" />
+                      <div className="flex items-center gap-1.5 text-sm text-namay-steel dark:text-gray-300 font-medium">
+                        <EnvelopeIcon className="h-3.5 w-3.5 text-namay-steel/40 dark:text-gray-500" />
                         {patient.email || '—'}
                       </div>
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-1.5 text-sm text-namay-steel font-medium tabular">
-                        <ClockIcon className="h-3.5 w-3.5 text-namay-steel/40" />
+                      <div className="flex items-center gap-1.5 text-sm text-namay-steel dark:text-gray-300 font-medium tabular">
+                        <ClockIcon className="h-3.5 w-3.5 text-namay-steel/40 dark:text-gray-500" />
                         {new Date(patient.creado_en).toLocaleDateString('es-PE', {
                           month: 'short', day: 'numeric', year: 'numeric',
                         })}
@@ -296,9 +296,9 @@ export default function PatientsPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-[11px] font-medium text-namay-steel/60 uppercase tracking-[0.15em] tabular">
-              Mostrando <span className="text-namay-navy font-semibold">{filtered.length}</span> de {patients.length} pacientes
+          <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <p className="text-[11px] font-medium text-namay-steel/60 dark:text-gray-400 uppercase tracking-[0.15em] tabular">
+              Mostrando <span className="text-namay-navy dark:text-gray-100 font-semibold">{filtered.length}</span> de {patients.length} pacientes
             </p>
           </div>
         )}
@@ -309,7 +309,7 @@ export default function PatientsPage() {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         title="Nuevo paciente"
-        icon={<UserPlusIcon className="h-4 w-4 text-namay-navy" />}
+        icon={<UserPlusIcon className="h-4 w-4 text-namay-navy dark:text-gray-200" />}
         size="lg"
         footer={
           <ModalActions
@@ -355,7 +355,7 @@ export default function PatientsPage() {
             <div>
               <label className="label-base">Género</label>
               <select value={form.genero} onChange={(e) => setForm({ ...form, genero: e.target.value })}
-                className="input-underline bg-white">
+                className="input-underline bg-white dark:bg-gray-800">
                 <option value="">Seleccionar...</option>
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
@@ -414,11 +414,11 @@ export default function PatientsPage() {
               { icon: ClockIcon,          label: 'Registrado el',
                 value: new Date(selectedPatient.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }) },
             ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-                <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-namay-steel/60" strokeWidth={1.5} />
+              <div key={label} className="flex items-start gap-3 py-3 border-b border-gray-50 dark:border-gray-700 last:border-0">
+                <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-namay-steel/60 dark:text-gray-400" strokeWidth={1.5} />
                 <div>
-                  <p className="text-[10px] font-semibold text-namay-steel/60 uppercase tracking-[0.2em]">{label}</p>
-                  <p className="text-sm font-medium text-namay-navy mt-1">{value}</p>
+                  <p className="text-[10px] font-semibold text-namay-steel/60 dark:text-gray-400 uppercase tracking-[0.2em]">{label}</p>
+                  <p className="text-sm font-medium text-namay-navy dark:text-gray-100 mt-1">{value}</p>
                 </div>
               </div>
             ))}
@@ -432,7 +432,7 @@ export default function PatientsPage() {
         onClose={() => setShowNewAppt(false)}
         title="Nueva cita"
         subtitle={apptPatient ? `Para: ${apptPatient.nombre}` : undefined}
-        icon={<CalendarIcon className="h-4 w-4 text-namay-navy" />}
+        icon={<CalendarIcon className="h-4 w-4 text-namay-navy dark:text-gray-200" />}
         variant="info"
         size="sm"
         footer={
@@ -441,13 +441,13 @@ export default function PatientsPage() {
           </button>
         }
       >
-        <div className="p-5 text-center border border-gray-100">
-          <IdentificationIcon className="h-8 w-8 mx-auto mb-3 text-namay-steel/60" strokeWidth={1.5} />
-          <p className="text-sm font-medium text-namay-navy">
+        <div className="p-5 text-center border border-gray-100 dark:border-gray-700">
+          <IdentificationIcon className="h-8 w-8 mx-auto mb-3 text-namay-steel/60 dark:text-gray-400" strokeWidth={1.5} />
+          <p className="text-sm font-medium text-namay-navy dark:text-gray-100">
             Para crear una cita completa ve al módulo de{' '}
             <a href="/citas" className="font-semibold text-namay-coral hover:underline">Gestión de citas</a>.
           </p>
-          {apptPatient && <p className="text-xs text-namay-steel/60 font-medium mt-2">Paciente: <strong className="text-namay-navy">{apptPatient.nombre}</strong></p>}
+          {apptPatient && <p className="text-xs text-namay-steel/60 dark:text-gray-400 font-medium mt-2">Paciente: <strong className="text-namay-navy dark:text-gray-100">{apptPatient.nombre}</strong></p>}
         </div>
       </Modal>
 

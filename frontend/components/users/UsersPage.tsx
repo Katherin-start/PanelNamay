@@ -125,29 +125,29 @@ export default function UsersPage() {
       )}
 
       {/* Stats — hairline grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
-        <div className="bg-white p-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100 dark:bg-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Total usuarios</p>
-          <p className="mt-3 text-3xl font-medium text-namay-navy tabular">{users.length}</p>
+          <p className="mt-3 text-3xl font-medium text-namay-navy dark:text-gray-100 tabular">{users.length}</p>
         </div>
-        <div className="bg-white p-6">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Activos</p>
           <p className="mt-3 text-3xl font-medium text-success-600 tabular">{totalActivos}</p>
         </div>
-        <div className="bg-white p-6">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Inactivos</p>
           <p className="mt-3 text-3xl font-medium text-danger-600 tabular">{totalInactivos}</p>
         </div>
-        <div className="bg-white p-6">
+        <div className="bg-white dark:bg-gray-800 p-6">
           <p className="eyebrow">Administradores</p>
           <p className="mt-3 text-3xl font-medium text-namay-coral tabular">{totalAdmins}</p>
         </div>
       </div>
 
       {/* Search */}
-      <div className="bg-white border border-gray-100 px-6 py-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 px-6 py-4">
         <div className="relative max-w-sm">
-          <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+          <MagnifyingGlassIcon className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 dark:text-gray-600" />
           <input
             type="text"
             value={search}
@@ -159,7 +159,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-100">
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -174,13 +174,13 @@ export default function UsersPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-14 text-sm text-namay-steel/40 font-medium">
+                  <td colSpan={5} className="text-center py-14 text-sm text-namay-steel/40 dark:text-gray-500 font-medium">
                     No se encontraron usuarios
                   </td>
                 </tr>
               ) : (
                 filtered.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
                         {user.foto_perfil ? (
@@ -196,8 +196,8 @@ export default function UsersPage() {
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-namay-navy">{user.nombre ?? 'Sin nombre'}</p>
-                          <p className="text-[11px] text-namay-steel/60 font-medium">{user.email ?? ''}</p>
+                          <p className="font-semibold text-namay-navy dark:text-gray-100">{user.nombre ?? 'Sin nombre'}</p>
+                          <p className="text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium">{user.email ?? ''}</p>
                         </div>
                       </div>
                     </td>
@@ -211,7 +211,7 @@ export default function UsersPage() {
                         showDot
                       />
                     </td>
-                    <td className="table-cell text-[11px] text-namay-steel/60 font-medium tabular">
+                    <td className="table-cell text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium tabular">
                       {user.ultimo_acceso
                         ? new Date(user.ultimo_acceso).toLocaleDateString('es-PE', {
                             day: 'numeric', month: 'short', year: 'numeric',
@@ -222,14 +222,14 @@ export default function UsersPage() {
                       <div className="flex items-center gap-1 justify-end">
                         <button
                           onClick={() => { setEditUser(user); setEditForm({ nombre: user.nombre, email: user.email, rol: user.rol }); setFormError(''); }}
-                          className="p-1.5 text-namay-steel/60 hover:text-namay-coral transition-colors"
+                          className="p-1.5 text-namay-steel/60 dark:text-gray-400 hover:text-namay-coral transition-colors"
                           title="Editar"
                         >
                           <PencilSquareIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
-                          className="p-1.5 text-namay-steel/60 hover:text-danger-500 transition-colors"
+                          className="p-1.5 text-namay-steel/60 dark:text-gray-400 hover:text-danger-500 transition-colors"
                           title="Eliminar"
                         >
                           <TrashIcon className="h-4 w-4" />
@@ -243,9 +243,9 @@ export default function UsersPage() {
           </table>
         </div>
         {filtered.length > 0 && (
-          <div className="px-6 py-3 border-t border-gray-100">
-            <p className="text-[11px] font-medium text-namay-steel/60 uppercase tracking-[0.15em] tabular">
-              Mostrando <span className="text-namay-navy font-semibold">{filtered.length}</span> de {staffUsers.length} usuarios
+          <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-[11px] font-medium text-namay-steel/60 dark:text-gray-400 uppercase tracking-[0.15em] tabular">
+              Mostrando <span className="text-namay-navy dark:text-gray-100 font-semibold">{filtered.length}</span> de {staffUsers.length} usuarios
             </p>
           </div>
         )}
@@ -257,7 +257,7 @@ export default function UsersPage() {
       open={showNew}
       onClose={() => setShowNew(false)}
       title="Nuevo usuario"
-      icon={<UserPlusIcon className="h-4 w-4 text-namay-navy" />}
+      icon={<UserPlusIcon className="h-4 w-4 text-namay-navy dark:text-gray-200" />}
       footer={
         <ModalActions
           onCancel={() => setShowNew(false)}
@@ -291,7 +291,7 @@ export default function UsersPage() {
         <div>
           <label className="label-base">Rol</label>
           <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })}
-            className="input-underline bg-white">
+            className="input-underline bg-white dark:bg-gray-800">
             {[['ADMINISTRADOR','Administrador'],['ODONTOLOGO','Odontólogo'],['RECEPCIONISTA','Recepcionista'],['CAJERO','Cajero'],['PRACTICANTE','Practicante']].map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}
@@ -306,7 +306,7 @@ export default function UsersPage() {
       onClose={() => setEditUser(null)}
       title="Editar usuario"
       subtitle={editUser?.email}
-      icon={<PencilSquareIcon className="h-4 w-4 text-namay-navy" />}
+      icon={<PencilSquareIcon className="h-4 w-4 text-namay-navy dark:text-gray-200" />}
       variant="info"
       footer={
         <ModalActions
@@ -336,7 +336,7 @@ export default function UsersPage() {
         <div>
           <label className="label-base">Rol</label>
           <select value={editForm.rol ?? ''} onChange={(e) => setEditForm({ ...editForm, rol: e.target.value as any })}
-            className="input-underline bg-white">
+            className="input-underline bg-white dark:bg-gray-800">
             {[['ADMINISTRADOR','Administrador'],['ODONTOLOGO','Odontólogo'],['RECEPCIONISTA','Recepcionista'],['CAJERO','Cajero'],['PRACTICANTE','Practicante']].map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}

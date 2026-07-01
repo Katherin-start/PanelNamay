@@ -33,14 +33,14 @@ export default function PageHeader({
         )}
         <div className="min-w-0 flex-1">
           {eyebrow && (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-namay-steel">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-namay-steel dark:text-gray-400">
               {eyebrow}
             </p>
           )}
-          <h1 className="mt-1 text-2xl lg:text-[28px] font-bold tracking-tight text-namay-navy">
+          <h1 className="mt-1 text-2xl lg:text-[28px] font-bold tracking-tight text-namay-navy dark:text-gray-100">
             {title}
           </h1>
-          {subtitle && <p className="mt-1.5 text-sm text-gray-500">{subtitle}</p>}
+          {subtitle && <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}

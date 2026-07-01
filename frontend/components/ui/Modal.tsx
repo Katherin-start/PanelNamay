@@ -26,9 +26,9 @@ const SIZE_MAP = {
 };
 
 const VARIANT_STYLES: Record<ModalVariant, { accent: string }> = {
-  default: { accent: 'text-namay-navy' },
+  default: { accent: 'text-namay-navy dark:text-gray-100' },
   danger:  { accent: 'text-namay-coral' },
-  info:    { accent: 'text-namay-navy' },
+  info:    { accent: 'text-namay-navy dark:text-gray-100' },
 };
 
 export default function Modal({
@@ -69,25 +69,25 @@ export default function Modal({
     >
       <div
         className={cn(
-          'bg-white border border-gray-100 w-full overflow-hidden animate-scale-in',
+          'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 w-full overflow-hidden animate-scale-in',
           SIZE_MAP[size],
         )}
       >
         {/* Header — plano, sin gradientes */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 dark:border-gray-700">
           {icon && (
-            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-namay-navy border border-gray-100">
+            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 text-namay-navy dark:text-gray-200 border border-gray-100 dark:border-gray-700">
               {icon}
             </div>
           )}
           <div className="flex-1 min-w-0">
             <h2 className={cn('text-base font-semibold truncate', v.accent)}>{title}</h2>
-            {subtitle && <p className="text-[11px] text-namay-steel/60 font-medium truncate mt-0.5 tracking-wide">{subtitle}</p>}
+            {subtitle && <p className="text-[11px] text-namay-steel/60 dark:text-gray-400 font-medium truncate mt-0.5 tracking-wide">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-namay-steel/40 hover:text-namay-navy transition-colors flex-shrink-0"
+            className="p-1.5 text-namay-steel/40 dark:text-gray-500 hover:text-namay-navy dark:hover:text-gray-200 transition-colors flex-shrink-0"
             aria-label="Cerrar"
           >
             <XMarkIcon className="h-4 w-4" />
@@ -99,7 +99,7 @@ export default function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-gray-100">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700">
             {footer}
           </div>
         )}
