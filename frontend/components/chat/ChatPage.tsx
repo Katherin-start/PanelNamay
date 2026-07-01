@@ -14,10 +14,13 @@ import {
   TrashIcon,
   EllipsisVerticalIcon,
   ChatBubbleLeftRightIcon,
+  PhoneIcon,
 } from '@heroicons/react/24/outline';
+import { useCall } from '@/context/CallContext';
 
 export default function ChatPage() {
   useInitializeStorage();
+  const { status: callStatus, startCall } = useCall();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -606,6 +609,14 @@ export default function ChatPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="hidden md:inline text-[11px] text-namay-steel/70 font-medium">{selectedContact.correo}</span>
+                  <button
+                    onClick={() => startCall(selectedContact.id, selectedContact.nombre)}
+                    disabled={callStatus !== 'idle'}
+                    className="p-2 hover:bg-gray-50 text-namay-steel/50 hover:text-success-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title="Llamar"
+                  >
+                    <PhoneIcon className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={handleClearChat}
                     className="p-2 hover:bg-gray-50 text-namay-steel/50 hover:text-danger-500 transition-colors"

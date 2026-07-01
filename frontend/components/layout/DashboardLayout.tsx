@@ -30,6 +30,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
 import { ROLE_CONFIG } from '@/components/ui/StatusBadge';
 import { getInitials } from '@/lib/utils';
+import CallOverlay from '@/components/chat/CallOverlay';
 
 const allNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'CAJERO', 'PRACTICANTE'] },
@@ -506,6 +507,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onChange={handleProfilePhotoChange}
         className="hidden"
       />
+
+      <CallOverlay />
     </div>
   );
 }

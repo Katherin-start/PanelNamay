@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { CallProvider } from '@/context/CallContext';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -11,5 +12,9 @@ export default function DashboardLayoutPage({
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <CallProvider>
+      <DashboardLayout>{children}</DashboardLayout>
+    </CallProvider>
+  );
 }

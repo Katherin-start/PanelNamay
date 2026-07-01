@@ -197,6 +197,57 @@ const initializeSocket = (server) => {
       }
     });
 
+    // ── Llamadas (señalización WebRTC) ──────────────────────────
+    // El servidor solo reenvía estos mensajes al destinatario; el audio
+    // viaja peer-to-peer una vez establecida la conexión WebRTC.
+    socket.on('call_invite', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('incoming_call', data);
+    });
+
+    socket.on('call_accept', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('call_accepted', data);
+    });
+
+    socket.on('call_reject', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('call_rejected', data);
+    });
+
+    socket.on('call_cancel', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('call_cancelled', data);
+    });
+
+    socket.on('call_end', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('call_ended', data);
+    });
+
+    socket.on('webrtc_offer', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('webrtc_offer', data);
+    });
+
+    socket.on('webrtc_answer', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('webrtc_answer', data);
+    });
+
+    socket.on('webrtc_ice_candidate', (data) => {
+      const { to_id: toId } = data || {};
+      if (!toId) return;
+      io.to(`user_${toId}`).emit('webrtc_ice_candidate', data);
+    });
+
     socket.on('disconnect', async () => {
       console.log('Usuario desconectado:', socket.id);
 
