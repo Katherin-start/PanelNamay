@@ -97,10 +97,15 @@ const sendCsv = (res, filename, headers, rows) => {
 const generatePatientsReport = async (req, res) => {
   const { format = 'pdf' } = req.query;
   try {
+    // Pacientes están en la tabla usuarios con rol PACIENTE
+    const { data: rolData } = await supabase.from('roles').select('id').ilike('nombre', 'PACIENTE').maybeSingle();
+    const rolId = rolData?.id ?? 6;
+
     const { data: rows, error } = await supabase
-      .from('pacientes')
-      .select('id, nombre, dni, telefono, fecha_nacimiento, direccion, estado, created_at')
-      .order('created_at', { ascending: false });
+      .from('usuarios')
+      .select('id, nombre, apellido, correo, dni, telefono, creado_en, activo')
+      .eq('rol_id', rolId)
+      .order('creado_en', { ascending: false });
 
     if (error) {
       return res.status(500).json({ message: 'Error al obtener pacientes', code: 'DATABASE_ERROR', error: error.message });
@@ -111,9 +116,9 @@ const generatePatientsReport = async (req, res) => {
 
     if (format === 'csv') {
       return sendCsv(res, 'reporte_pacientes.csv',
-        ['#', 'Nombre', 'DNI', 'Teléfono', 'Fecha Nacimiento', 'Dirección', 'Estado', 'Registrado'],
-        pacientes.map((p, i) => [i + 1, p.nombre, p.dni || '', p.telefono || '',
-          fmtDate(p.fecha_nacimiento), p.direccion || '', p.estado || '', fmtDate(p.created_at)])
+        ['#', 'Nombre', 'Apellido', 'Correo', 'DNI', 'Teléfono', 'Estado', 'Registrado'],
+        pacientes.map((p, i) => [i + 1, p.nombre || '', p.apellido || '', p.correo || '',
+          p.dni || '', p.telefono || '', p.activo ? 'Activo' : 'Inactivo', fmtDate(p.creado_en)])
       );
     }
 
@@ -126,23 +131,24 @@ const generatePatientsReport = async (req, res) => {
     y += 18;
 
     const cols = [
-      { label: '#',          x: 55,  width: 22 },
-      { label: 'NOMBRE',     x: 82,  width: 140 },
-      { label: 'DNI',        x: 227, width: 60 },
-      { label: 'TELÉFONO',   x: 292, width: 80 },
-      { label: 'ESTADO',     x: 377, width: 60 },
-      { label: 'REGISTRADO', x: 442, width: 80 },
+      { label: '#',          x: 55,  width: 22  },
+      { label: 'NOMBRE',     x: 82,  width: 130 },
+      { label: 'CORREO',     x: 217, width: 155 },
+      { label: 'TELÉFONO',   x: 377, width: 75  },
+      { label: 'ESTADO',     x: 457, width: 65  },
     ];
 
     y = pdfTableHeader(doc, y, cols);
 
     pacientes.forEach((p, i) => {
       if (y > 730) { pdfFooter(doc); doc.addPage(); y = 50; }
-      const estadoColor = (p.estado || '').toLowerCase() === 'activo' ? '#16A34A' : '#B91C1C';
+      const estadoColor = p.activo ? '#16A34A' : '#B91C1C';
       y = pdfRow(doc, y, cols, [
-        i + 1, p.nombre || 'N/A', p.dni || '—', p.telefono || '—',
-        { text: (p.estado || '—').toUpperCase(), color: estadoColor },
-        fmtDate(p.created_at),
+        i + 1,
+        `${p.nombre || ''} ${p.apellido || ''}`.trim() || 'N/A',
+        p.correo || '—',
+        p.telefono || '—',
+        { text: p.activo ? 'ACTIVO' : 'INACTIVO', color: estadoColor },
       ], i % 2 === 0);
     });
 
@@ -438,14 +444,19 @@ const generateAttendanceReport = async (req, res) => {
   const start = req.query.startDate || today;
   const end   = req.query.endDate   || today;
   const currentUserId = req.user.id;
+  const currentRole   = (req.user.rol || '').toUpperCase();
+  const isAdmin = ['ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO'].includes(currentRole);
   try {
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from('asistencia_practicante')
-      .select('fecha, turno, check_in, check_out, actividad, estado')
-      .eq('practicante_id', currentUserId)
+      .select('fecha, turno, check_in, check_out, actividad, estado, practicante_id')
       .gte('fecha', start)
       .lte('fecha', end)
       .order('fecha', { ascending: true });
+
+    if (!isAdmin) query = query.eq('practicante_id', currentUserId);
+
+    const { data: rows, error } = await query;
 
     if (error) {
       return res.status(500).json({ message: 'Error al generar reporte', error: error.message, code: 'DATABASE_ERROR' });
@@ -514,14 +525,19 @@ const generateAccumulatedHoursReport = async (req, res) => {
   const start = req.query.startDate || today;
   const end   = req.query.endDate   || today;
   const currentUserId = req.user.id;
+  const currentRole   = (req.user.rol || '').toUpperCase();
+  const isAdmin = ['ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO'].includes(currentRole);
   try {
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from('asistencia_practicante')
-      .select('fecha, check_in, check_out, turno')
-      .eq('practicante_id', currentUserId)
+      .select('fecha, check_in, check_out, turno, practicante_id')
       .gte('fecha', start)
       .lte('fecha', end)
       .order('fecha', { ascending: true });
+
+    if (!isAdmin) query = query.eq('practicante_id', currentUserId);
+
+    const { data: rows, error } = await query;
 
     if (error) {
       return res.status(500).json({ message: 'Error al generar reporte de horas', error: error.message, code: 'DATABASE_ERROR' });

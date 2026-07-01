@@ -14,7 +14,7 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'PRACTICANTE', 'CAJERO']));
+router.use(roleMiddleware(['ADMINISTRADOR', 'ODONTOLOGO', 'RECEPCIONISTA', 'PRACTICANTE', 'CAJERO', 'PACIENTE']));
 
 // 🧾 Reportes PDF
 router.get('/income', generateIncomeReport);
