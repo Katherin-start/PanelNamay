@@ -188,7 +188,7 @@ export default function PendingPaymentProofsPage() {
       {/* Validation Modal */}
       {showModal && selectedPayment && (
         <Modal
-          isOpen={showModal}
+          open={showModal}
           onClose={() => {
             setShowModal(false);
             setSelectedPayment(null);
@@ -241,7 +241,7 @@ export default function PendingPaymentProofsPage() {
             </div>
 
             {/* Actions */}
-            <ModalActions>
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -249,14 +249,14 @@ export default function PendingPaymentProofsPage() {
                   setImagePreviewUrl(null);
                 }}
                 disabled={validating}
-                className="btn-secondary"
+                className="btn-secondary flex-1"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleValidatePayment('RECHAZADO')}
                 disabled={validating}
-                className="btn-danger"
+                className="btn-danger flex-1"
               >
                 <XCircleIcon className="h-4 w-4" />
                 Rechazar
@@ -264,12 +264,12 @@ export default function PendingPaymentProofsPage() {
               <button
                 onClick={() => handleValidatePayment('APROBADO')}
                 disabled={validating}
-                className="btn-primary"
+                className="btn-primary flex-1"
               >
                 <CheckCircleIcon className="h-4 w-4" />
                 Aprobar
               </button>
-            </ModalActions>
+            </div>
           </div>
         </Modal>
       )}
