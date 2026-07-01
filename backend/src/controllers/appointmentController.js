@@ -28,7 +28,6 @@ const listAppointments = async (req, res) => {
 
     if (error) {
       console.error('[listAppointments] Join error:', error.message, '— reintentando sin join');
-      // Si el join falla, reintentar sin join
       const { data: fallback, error: fallbackError } = await supabase
         .from('citas')
         .select('*')
@@ -41,7 +40,37 @@ const listAppointments = async (req, res) => {
       return res.json({ code: 'APPOINTMENTS_LIST_SUCCESS', data: fallback || [] });
     }
 
-    res.json({ code: 'APPOINTMENTS_LIST_SUCCESS', data: data || [] });
+    const appointments = data || [];
+
+    // Recopilar IDs únicos de pacientes y doctores para enriquecer nombres
+    const patientUuids = [...new Set(appointments.map(a => a.id_paciente_uuid).filter(Boolean))];
+    const doctorIds    = [...new Set(appointments.map(a => a.id_odontologo).filter(Boolean))];
+    const allIds       = [...new Set([...patientUuids, ...doctorIds])];
+
+    let userMap = {};
+    if (allIds.length > 0) {
+      const { data: users } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido')
+        .in('id', allIds);
+      (users || []).forEach(u => {
+        userMap[u.id] = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+      });
+    }
+
+    const enriched = appointments.map(a => {
+      // doctor_nombre: primero del join odontologo, luego del mapa
+      const doctorFromJoin = a.odontologo
+        ? `${a.odontologo.nombre || ''} ${a.odontologo.apellido || ''}`.trim()
+        : null;
+      return {
+        ...a,
+        paciente_nombre: a.paciente_nombre || userMap[a.id_paciente_uuid] || null,
+        doctor_nombre:   a.doctor_nombre   || doctorFromJoin || userMap[a.id_odontologo] || null,
+      };
+    });
+
+    res.json({ code: 'APPOINTMENTS_LIST_SUCCESS', data: enriched });
   } catch (err) {
     res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
   }
