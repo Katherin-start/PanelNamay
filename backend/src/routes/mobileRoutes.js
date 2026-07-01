@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts, getMobileDoctorById, createReview, getMyReviews, createMobileAppointment, getMobileAppointmentPayment, uploadMobilePaymentProof, getMyClinicalHistory, getMyMobileAppointments, getMyPatientAppointments, confirmMobileAppointment, getMobileChatContacts, diagnosticRoles, testNotification } = require('../controllers/mobileController');
+const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts, getMobileDoctorById, createReview, getMyReviews, createMobileAppointment, getMobileAppointmentPayment, uploadMobilePaymentProof, getMyClinicalHistory, getMyMobileAppointments, getMyPatientAppointments, confirmMobileAppointment, getMobileAvailability, cancelMobileAppointment, rescheduleMobileAppointment, getMobileChatContacts, diagnosticRoles, testNotification } = require('../controllers/mobileController');
 const { getServices } = require('../controllers/serviceController');
 const mobileAuthMiddleware = require('../middleware/mobileAuthMiddleware');
 
@@ -25,9 +25,12 @@ router.get('/profile', mobileAuthMiddleware, getMobileProfile);        // Obtene
 router.put('/profile', mobileAuthMiddleware, updateMobileProfile);     // Actualizar perfil
 router.post('/profile/photo', mobileAuthMiddleware, upload.single('foto'), uploadMobileProfilePhoto); // Subir foto de perfil
 router.post('/appointments', mobileAuthMiddleware, createMobileAppointment); // Crear cita + pago QR
+router.get('/disponibilidad', mobileAuthMiddleware, getMobileAvailability);   // Slots disponibles de un doctor en una fecha
 router.get('/appointments', mobileAuthMiddleware, getMyPatientAppointments); // Listar citas del paciente autenticado
 router.get('/appointments/doctor/my', mobileAuthMiddleware, getMyMobileAppointments); // Obtener citas asignadas al doctor
 router.put('/appointments/:appointmentId/confirm', mobileAuthMiddleware, confirmMobileAppointment); // Doctor confirma cita
+router.patch('/appointments/:appointmentId/reschedule', mobileAuthMiddleware, rescheduleMobileAppointment); // Paciente reagenda cita
+router.delete('/appointments/:appointmentId/cancel', mobileAuthMiddleware, cancelMobileAppointment); // Paciente cancela cita
 router.get('/appointments/:appointmentId/payment', mobileAuthMiddleware, getMobileAppointmentPayment); // Obtener pago de cita y QR
 router.post('/payments/:paymentId/proof', mobileAuthMiddleware, upload.single('comprobante'), uploadMobilePaymentProof); // Subir comprobante de pago
 router.get('/clinical-history', mobileAuthMiddleware, getMyClinicalHistory); // Obtener historial clínico del paciente

@@ -1209,7 +1209,7 @@ const confirmMobileAppointment = async (req, res) => {
     // Actualizar estado de la cita
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('citas')
-      .update({ estado, actualizado_en: new Date().toISOString() })
+      .update({ estado })
       .eq('id', appointmentId)
       .select('*')
       .single();
@@ -1440,6 +1440,179 @@ const getMobileChatContacts = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// DISPONIBILIDAD — devuelve slots de 30 min (09:00-21:00) para un
+// doctor en una fecha dada, marcando los ya ocupados.
+// ─────────────────────────────────────────────────────────────────
+const getMobileAvailability = async (req, res) => {
+  try {
+    const { id_odontologo, fecha } = req.query;
+    if (!id_odontologo || !fecha) {
+      return res.status(400).json({ message: 'id_odontologo y fecha son requeridos', code: 'MISSING_PARAMS' });
+    }
+
+    const { data: booked, error } = await supabase
+      .from('citas')
+      .select('hora')
+      .eq('id_odontologo', id_odontologo)
+      .eq('fecha', fecha)
+      .not('estado', 'in', '("cancelada","completada")');
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al consultar citas', error: error.message, code: 'DB_ERROR' });
+    }
+
+    const bookedHoras = new Set((booked || []).map(c => c.hora?.substring(0, 5)));
+
+    const slots = [];
+    for (let h = 9; h < 21; h++) {
+      for (const m of [0, 30]) {
+        const hora = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        const turno = h < 12 ? 'mañana' : h < 18 ? 'tarde' : 'noche';
+        slots.push({ hora, disponible: !bookedHoras.has(hora), turno });
+      }
+    }
+
+    res.json({ code: 'AVAILABILITY_SUCCESS', slots });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// CANCELAR CITA (paciente)
+// ─────────────────────────────────────────────────────────────────
+const cancelMobileAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { reason } = req.body;
+    const patientId = req.user.id;
+
+    const { data: appointment, error: fetchError } = await supabase
+      .from('citas')
+      .select('id, id_paciente, id_paciente_uuid, estado')
+      .eq('id', appointmentId)
+      .single();
+
+    if (fetchError || !appointment) {
+      return res.status(404).json({ message: 'Cita no encontrada', code: 'APPOINTMENT_NOT_FOUND' });
+    }
+
+    const isOwner =
+      String(appointment.id_paciente) === String(patientId) ||
+      String(appointment.id_paciente_uuid) === String(patientId);
+    if (!isOwner) {
+      return res.status(403).json({ message: 'No autorizado para cancelar esta cita', code: 'FORBIDDEN' });
+    }
+
+    if (['cancelada', 'completada'].includes(appointment.estado)) {
+      return res.status(400).json({ message: `La cita ya está ${appointment.estado}`, code: 'INVALID_STATE' });
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('citas')
+      .update({ estado: 'cancelada', nota_cancelacion: reason || 'Cancelada por el paciente' })
+      .eq('id', appointmentId)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Error al cancelar la cita', error: updateError.message, code: 'UPDATE_ERROR' });
+    }
+
+    try {
+      await notifyUsersByRole('CAJERO', 'appointment_cancelled', { appointment: updated });
+      await notifyUsersByRole('RECEPCIONISTA', 'appointment_cancelled', { appointment: updated });
+    } catch (e) {
+      console.error('⚠️ [cancelMobileAppointment] Error notificando:', e?.message);
+    }
+
+    res.json({ code: 'APPOINTMENT_CANCELLED', appointment: updated });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// REAGENDAR CITA (paciente)
+// ─────────────────────────────────────────────────────────────────
+const rescheduleMobileAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { fecha, hora, metodo_pago, payment_method } = req.body;
+    const patientId = req.user.id;
+    const finalMetodoPago = metodo_pago ?? payment_method;
+
+    if (!fecha || !hora) {
+      return res.status(400).json({ message: 'fecha y hora son requeridos', code: 'MISSING_FIELDS' });
+    }
+
+    const { data: appointment, error: fetchError } = await supabase
+      .from('citas')
+      .select('id, id_paciente, id_paciente_uuid, id_odontologo, estado')
+      .eq('id', appointmentId)
+      .single();
+
+    if (fetchError || !appointment) {
+      return res.status(404).json({ message: 'Cita no encontrada', code: 'APPOINTMENT_NOT_FOUND' });
+    }
+
+    const isOwner =
+      String(appointment.id_paciente) === String(patientId) ||
+      String(appointment.id_paciente_uuid) === String(patientId);
+    if (!isOwner) {
+      return res.status(403).json({ message: 'No autorizado para reagendar esta cita', code: 'FORBIDDEN' });
+    }
+
+    if (['cancelada', 'completada', 'en_curso'].includes(appointment.estado)) {
+      return res.status(400).json({
+        message: `La cita está en estado "${appointment.estado}" y no se puede reagendar`,
+        code: 'INVALID_STATE',
+      });
+    }
+
+    // Verificar disponibilidad del slot (excluyendo esta misma cita)
+    const { data: conflict } = await supabase
+      .from('citas')
+      .select('id')
+      .eq('id_odontologo', appointment.id_odontologo)
+      .eq('fecha', fecha)
+      .eq('hora', hora)
+      .not('id', 'eq', appointmentId)
+      .not('estado', 'in', '("cancelada","completada")')
+      .maybeSingle();
+
+    if (conflict) {
+      return res.status(409).json({ message: 'El nuevo horario ya está ocupado para este odontólogo', code: 'SLOT_UNAVAILABLE' });
+    }
+
+    const updateData = { fecha, hora };
+    if (finalMetodoPago) updateData.metodo_pago = finalMetodoPago;
+
+    const { data: updatedAppointment, error: updateError } = await supabase
+      .from('citas')
+      .update(updateData)
+      .eq('id', appointmentId)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Error al reagendar la cita', error: updateError.message, code: 'UPDATE_ERROR' });
+    }
+
+    try {
+      await notifyUsersByRole('CAJERO', 'appointment_rescheduled', { appointment: updatedAppointment });
+      await notifyUsersByRole('RECEPCIONISTA', 'appointment_rescheduled', { appointment: updatedAppointment });
+    } catch (e) {
+      console.error('⚠️ [rescheduleMobileAppointment] Error notificando:', e?.message);
+    }
+
+    res.json({ code: 'APPOINTMENT_RESCHEDULED', appointment: updatedAppointment });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
 module.exports = {
   mobileRegister,
   mobileLogin,
@@ -1458,6 +1631,9 @@ module.exports = {
   getMyMobileAppointments,
   getMyPatientAppointments,
   confirmMobileAppointment,
+  getMobileAvailability,
+  cancelMobileAppointment,
+  rescheduleMobileAppointment,
   getMobileChatContacts,
   diagnosticRoles,
   testNotification,
