@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { mobileRegister, mobileLogin, getMobileDoctors, getMobileProfile, updateMobileProfile, uploadMobileProfilePhoto, getMobileDiscounts, getMobileDoctorById, createReview, getMyReviews, createMobileAppointment, getMobileAppointmentPayment, uploadMobilePaymentProof, getMyClinicalHistory, getMyMobileAppointments, getMyPatientAppointments, confirmMobileAppointment, getMobileAvailability, cancelMobileAppointment, rescheduleMobileAppointment, getMobileChatContacts, diagnosticRoles, testNotification } = require('../controllers/mobileController');
+const { mobileAssistantChat } = require('../controllers/assistantController');
 const { getServices } = require('../controllers/serviceController');
 const mobileAuthMiddleware = require('../middleware/mobileAuthMiddleware');
 
@@ -37,5 +38,6 @@ router.get('/clinical-history', mobileAuthMiddleware, getMyClinicalHistory); // 
 router.get('/chat/contacts', mobileAuthMiddleware, getMobileChatContacts);   // Contactos de chat disponibles para el paciente
 router.get('/services', mobileAuthMiddleware, getServices); // Listar precios de consultas definidos por administración
 router.get('/discounts', mobileAuthMiddleware, getMobileDiscounts);    // Listar descuentos autorizados y vigentes
+router.post('/assistant/chat', mobileAuthMiddleware, mobileAssistantChat); // Asistente IA dental
 
 module.exports = router;

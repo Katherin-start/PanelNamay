@@ -1441,6 +1441,50 @@ const getMobileChatContacts = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// HISTORIAL CLÍNICO DEL PACIENTE
+// ─────────────────────────────────────────────────────────────────
+const getMyClinicalHistory = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    const { data: citas, error } = await supabase
+      .from('citas')
+      .select('id, fecha, hora, estado, servicio, notas, id_odontologo, metodo_pago')
+      .or(`id_paciente_uuid.eq.${patientId},id_paciente.eq.${patientId}`)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ message: 'Error al obtener historial', error: error.message, code: 'DB_ERROR' });
+    }
+
+    const items = citas || [];
+
+    // Enriquecer con nombre del doctor
+    const doctorIds = [...new Set(items.map(c => c.id_odontologo).filter(Boolean))];
+    let doctorMap = {};
+    if (doctorIds.length > 0) {
+      const { data: docs } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido, foto_perfil')
+        .in('id', doctorIds);
+      (docs || []).forEach(d => { doctorMap[d.id] = d; });
+    }
+
+    const history = items.map(c => ({
+      ...c,
+      doctor: doctorMap[c.id_odontologo] ?? null,
+      nombre_doctor: doctorMap[c.id_odontologo]
+        ? `${doctorMap[c.id_odontologo].nombre || ''} ${doctorMap[c.id_odontologo].apellido || ''}`.trim()
+        : null,
+    }));
+
+    res.json({ code: 'CLINICAL_HISTORY_SUCCESS', history });
+  } catch (err) {
+    res.status(500).json({ message: 'Error interno', error: err.message, code: 'SERVER_ERROR' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
 // DISPONIBILIDAD — devuelve slots de 30 min (09:00-21:00) para un
 // doctor en una fecha dada, marcando los ya ocupados.
 // ─────────────────────────────────────────────────────────────────
@@ -1630,6 +1674,7 @@ module.exports = {
   getMobileDiscounts,
   getMyMobileAppointments,
   getMyPatientAppointments,
+  getMyClinicalHistory,
   confirmMobileAppointment,
   getMobileAvailability,
   cancelMobileAppointment,
